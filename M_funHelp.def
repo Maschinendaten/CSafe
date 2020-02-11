@@ -1,0 +1,110 @@
+Option Compare Database
+Option Explicit
+
+
+Function funHilfe(Verweis As String)
+
+Dim daten As String
+Dim L1 As Long
+Dim L2 As Long
+Dim LD As String
+Dim S1 As String
+
+'Prüfe ob Hilfe installiert ist
+If funDirLok("docureader.exe") = False Then
+        MsgBox ("Die Datei docureader.exe ist nicht im lokalen Verzeichnis vorhanden.")
+    Exit Function
+End If
+
+If funDirLok("CsafeHelp.pdf") = False Then
+    
+    MsgBox ("Die Datei CSafeHelp.PDF ist nicht im lokalen Verzeichnis vorhanden.")
+    Exit Function
+End If
+
+LD = CurrentProject.Path
+
+L2 = Val(DLookup("Bez", "t_LiInfo", "kurzBez like '" & Verweis & "'"))
+
+If L2 = 0 Then
+    MsgBox ("Keine Hilfe mit dem Verweis " & Verweis & " vorhanden.")
+    Exit Function
+End If
+
+
+daten = LD & "\docureader.exe " & LD & "\CSafeHelp.pdf " & CStr(L2)
+L1 = Shell(daten, vbMaximizedFocus)
+
+
+End Function
+
+
+
+
+Function funDirLok(S1 As String) As Boolean
+'prüft ob eine Datei lokal vorhanden
+Dim S2 As String
+
+S2 = VBA.Dir(CurrentProject.Path & "\" & S1)
+
+If Len(S2) = 0 Then
+    funDirLok = False
+Else
+    funDirLok = True
+End If
+
+
+End Function
+
+
+
+Function funCallHelp(Optional UserTempVar As Boolean)
+'Dim LiD As Long
+'Dim S1 As String
+Dim wshshell
+
+'LiD = Screen.ActiveForm.ActiveControl.HelpContextId
+'If LiD = 0 Then LiD = Screen.ActiveReport.HelpContextId
+'If LiD = 0 Then
+'    If useTempvar Then LiD
+'MsgBox "Das ist die Hilfe." & Str(LiD)
+'LiD = 25
+
+'S1 = "-mapid " & CStr(LiD) & " " & Application.CurrentProject.Path & "\CSafe.chm"
+'Shell "hh " & S1, vbNormalFocus
+
+Set wshshell = CreateObject("WScript.Shell")
+wshshell.Run "https://csafe-biz.herokuapp.com/CSafe.html"
+
+
+
+End Function
+
+
+
+
+
+Public Function funShowHelp(Optional LNr As Long)
+
+Dim strdb_1 As String
+Dim strchm As String
+Dim ctlCurrentControl As Control
+Dim strControlName As String
+
+strdb_1 = Application.CurrentProject.Path
+strchm = strdb_1 & "\csafe.chm"
+
+'Set ctlCurrentControl = Screen.ActiveControl
+'strControlName = ctlCurrentControl.HelpContextId
+
+strControlName = LNr
+
+If strControlName = "0" Then
+    Shell "hh " & strchm, vbNormalFocus
+End If
+
+Shell "hh -mapid " & strControlName & " " & strchm, vbNormalFocus
+
+'© Thomas Schulz http://www.help-guide.de
+
+End Function

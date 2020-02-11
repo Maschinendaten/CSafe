@@ -1,0 +1,173 @@
+Option Compare Database
+Option Explicit
+
+
+Function funCheck() As Boolean
+'Die durchläuft die Risikoanalyse und prüft die einzelnen Felder
+'Aus der Art wie die felder gefüllt sind wird eine prozentuale Bewertung der
+'Risikoanalyse erzeugt bei 100% liegt kein Fehler vor
+'Gleichzeitig wird der fehler in das Feld Check text eingetragen
+
+'Bewertungsschema -50% wenn Wert fehlt
+
+Const C_Bez = 5
+
+
+
+Dim Rs1 As DAO.Recordset
+
+Dim S1 As String
+Dim zC As Long
+Dim zDop As Long 'Zählt die doppelten Nummern
+
+
+Dim Rs2 As DAO.Recordset
+Dim S2 As String
+
+
+zDop = 0
+
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM tDA_Analyse ")
+
+If Rs1.EOF = True Then Exit Function
+
+
+Rs1.MoveFirst
+
+While Not Rs1.EOF
+    Rs1.Edit
+    Rs1!CheckText = "Analyse vom :" & Now() & vbCrLf
+    zC = 1 'Dafür das überhaupt ein Datensatz angelegt
+    'Prüfe Bezeichung
+    If Len(Nz(Rs1!Bez)) > 4 Then
+        zC = zC + C_Bez
+        If Left(Nz(Rs1!Bez), 1) = "-" Then 'Durch - Zeichen wird diese Gefährung nicht weiter analysiert
+            Rs1!CheckText = Rs1!CheckText & LA("- Zeichen gefunden Analyse abgebrochen") & vbCrLf
+            zC = 116
+            GoTo HupfNext
+        End If
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Bezeichnung vorhanden") & vbCrLf
+    End If
+    
+    'Prüfe Nummer
+    If Len(Nz(Rs1!LNr)) >= 1 Then
+        zC = zC + 10
+        'WennNummer vorhanden prüfen ob doppelt
+            S2 = "SELECT Count(tDA_Analyse.LNr) AS Anz_, tDA_Analyse.LNr FROM tDA_Analyse " & _
+            "GROUP BY tDA_Analyse.LNr HAVING (tDA_Analyse.LNr ='" & Rs1!LNr & "');"
+                 
+            Set Rs2 = CurrentDb.OpenRecordset(S2)
+                
+            If Rs2!Anz_ > 1 Then
+                Rs1!CheckText = Rs1!CheckText & LA("Die Nummer ist doppelt vorhanden") & vbCrLf
+                zDop = zDop + 1
+            Else
+                zC = zC + 10
+            End If
+            Set Rs2 = Nothing
+        
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Nummer vorhande") & vbCrLf
+    End If
+    
+    'Prüfe Ort
+    If Len(Nz(Rs1!Ort)) > 5 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Ort vorhande") & vbCrLf
+    End If
+    
+    'Prüfe Beschreibung
+    If Len(Nz(Rs1!Beschreibung)) > 8 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Beschreibung vorhanden") & vbCrLf
+    End If
+    
+    'Prüfe Loesung / Massnahme
+    If Len(Nz(Rs1!Loesung)) > 8 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Massnahme vorhanden") & vbCrLf
+    End If
+    
+    
+    'Prüfe Risiko
+    If Len(Nz(Rs1!Risiko)) > 1 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Angabe des Risikos") & vbCrLf
+    End If
+    
+    'Prüfe RestRisiko
+    If Len(Nz(Rs1!RestRisiko)) > 1 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Angabe des Restrisikos") & vbCrLf
+    End If
+    
+    'Prüfe Risiko < RestRisiko
+    If Val(Mid(Nz(Rs1!RestRisiko), 11)) < Val(Mid(Nz(Rs1!Risiko), 11)) Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Restrisikos ist größer oder gleich wie das Risiko!") & vbCrLf
+    End If
+    
+    'Prüfe Elektrotechnische Lösung
+    If Rs1!Elektrisch = True Then
+        'Prüfe RestRisiko
+        If Len(Nz(Rs1!PLevel)) > 1 Then
+            zC = zC + 10
+        Else
+            Rs1!CheckText = Rs1!CheckText & LA("Elektrisch aktiv aber kein PLevel") & vbCrLf
+        End If
+    Else
+        zC = zC + 10 'Faktor hinzufügen
+    End If
+
+    'prüfe ob eine Norm angegeben
+    'macht das Sinn ?
+    
+    'prüfen ob eine Lebensphase angegeben
+    S1 = Nz(DLookup("fiGU", "tDA_LPhase", "figu = '" & Mid(StringFromGUID(Rs1!id), 7, 38) & "'"))
+    'Prüfe RestRisiko
+    If Len(S1) > 1 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Lebensphase festgelegt") & vbCrLf
+    End If
+    
+    'prüfen ob eine kategorie angegeben
+    S1 = Nz(DLookup("fiGU", "tDA_AufKategorie", "figu = '" & Mid(StringFromGUID(Rs1!id), 7, 38) & "'"))
+    
+    'Prüfe RestRisiko
+    If Len(S1) > 1 Then
+        zC = zC + 10
+    Else
+        Rs1!CheckText = Rs1!CheckText & LA("Keine Kategorie festgelegt") & vbCrLf
+    End If
+    
+
+    
+HupfNext:
+    '116 der momentane Maxwert 21.3.2013
+    Rs1!Check = CInt(zC / 116 * 100)
+    
+    Rs1.Update
+    
+    
+    
+Rs1.MoveNext
+
+Wend
+
+Set Rs1 = Nothing
+funCheck = True
+
+If zDop <> 0 Then
+    MsgBox LA("Es sind ") & zDop & LA("Nummern doppelt. Bei doppelten Nummern gibt es Probleme beim Drucken, da die Nummer die Seitennummer ist."), vbCritical, LA("Doppelte Nummern")
+End If
+
+
+End Function

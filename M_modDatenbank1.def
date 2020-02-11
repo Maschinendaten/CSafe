@@ -1,0 +1,384 @@
+Option Compare Database
+Option Explicit
+
+Private m_db As DAO.Database
+
+Public Property Get CurrentDbC() As DAO.Database
+'Öffnet eine DB nur 1x
+    If (m_db Is Nothing) Then
+      Set m_db = CurrentDb
+    End If
+    Set CurrentDbC = m_db
+End Property
+
+Function funDatensatzVorhanden(strTabellenname As String, strFeld As String, strWert As String) As Boolean
+'Die Funktion stellt fest ob ein Datensatz bereits vorhanden ist
+Dim Rs1 As DAO.Recordset
+Dim sqlStr As String
+On Error GoTo Err_
+'Suche letzte Nummer
+
+If strTabellenname = "" Then
+    MsgBox ("Sie müssen eine Tabelle Angeben.")
+    Exit Function
+End If
+
+sqlStr = "SELECT " & strTabellenname & "." & strFeld & _
+        " FROM " & strTabellenname & _
+        " Where (" & strTabellenname & "." & strFeld & " like '" & strWert & "');"
+
+'Debug.Print sqlStr
+Set Rs1 = CurrentDbC.OpenRecordset(sqlStr)
+'Debug.Print Rs1.RecordCount
+
+If Rs1.RecordCount = 0 Then 'Not (Rs1.EOF) And Not (Rs1.BOF) Then
+    funDatensatzVorhanden = False
+Else
+    funDatensatzVorhanden = True
+End If
+
+Rs1.Close
+Set Rs1 = Nothing
+Exit Function
+Err_:
+    MsgErr "modDatenbank", "funDatensatzVorhanden", Err.description, Err.Number, Err.Erl
+End Function
+
+Function funTabelleVorhanden(strTabellenname As String) As Boolean
+'Die Funktion stellt fest ob ein Datensatz bereits vorhanden ist
+Dim Rs1 As DAO.Recordset
+Dim sqlStr As String
+
+If OnErRe Then On Error Resume Next
+
+sqlStr = strTabellenname
+
+'Debug.Print sqlStr
+
+Set Rs1 = CurrentDbC.OpenRecordset(sqlStr)
+
+'Debug.Print Rs1.RecordCount
+
+funTabelleVorhanden = False
+
+If Err.Number = 0 Then
+    funTabelleVorhanden = True
+End If
+
+Rs1.Close
+Set Rs1 = Nothing
+
+End Function
+
+
+Function funNextRecord(strTabellenname As String, strZaehlfeld As String) As Long
+'26.10.2004 MG
+'Die Function liefert die nächste frei Datensatz Nummer zurück und wird anstelle einer Autonummer verwendet
+
+
+Dim Rs1 As DAO.Recordset
+Dim sqlStr As String
+
+On Error GoTo Err_
+'Suche letzte Nummer
+
+If strTabellenname = "" Then
+    MsgBox ("Sie müssen eine Tabelle Angeben.")
+    Exit Function
+End If
+
+sqlStr = "SELECT TOP 1 " & strTabellenname & "." & strZaehlfeld & _
+        " FROM " & strTabellenname & _
+        " ORDER BY " & strTabellenname & "." & strZaehlfeld & " DESC;"
+
+
+Set Rs1 = CurrentDbC.OpenRecordset(sqlStr)
+    'Wenn noch keine Datensatz vorhanden ist Startnummer fragen
+If Rs1.RecordCount <> 1 Then
+    funNextRecord = Val(InputBox("Bitte geben Sie die Startnummer für das Feld:" & strZaehlfeld & "in der Tabelle" & strTabellenname & " ein."))
+Else
+    'Wenn Datensaznummer vorhanden Nummer addieren
+    funNextRecord = Rs1(strZaehlfeld) + 1
+End If
+
+
+Rs1.Close
+Set Rs1 = Nothing
+
+Exit Function
+Err_:
+
+MsgErr "modDatenbank", "funLetzterDatensatz", Err.description, Err.Number, Err.Erl
+
+End Function
+
+Function funAufNrPro(lonPNr As Long) As Long
+'Es wird die Auftragsnummer zum Projekt gesucht gibt es mehrere wird 0 zurück gegeben
+'Gibt es keinen wird -1 zurück gegeben
+Dim Rs1 As DAO.Recordset
+Dim strSQL As String
+On Error GoTo Err_
+
+'Me!varPrNr = Me!var_pnr
+If Nz(lonPNr) = 0 Then
+    funAufNrPro = 0
+    Exit Function
+End If
+
+strSQL = " SELECT tblProjekte.ProjektNr, tblAufDaten.ID " & _
+    "FROM tblProjekte INNER JOIN tblAufDaten ON tblProjekte.ProjektNr = tblAufDaten.ProNr " & _
+    "WHERE (((tblProjekte.ProjektNr)= " & lonPNr & ") AND (Not (tblAufDaten.Aufabgeschlossen)=True))"
+
+Set Rs1 = CurrentDbC.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+If Not Rs1.EOF Then
+    Rs1.MoveLast
+    If Rs1.RecordCount = 1 Then
+        funAufNrPro = Rs1!id
+    Else
+        'MsgBox ("Es ist mehr wie ein Auftrag für das Projekt aktiv wählen Sie den richtigen!")
+        funAufNrPro = 0
+    End If
+Else
+            funAufNrPro = -1
+End If
+Rs1.Close
+Set Rs1 = Nothing
+
+Exit_:
+Exit Function
+Err_:
+    MsgErr "fmodDatenbank", "funAufNrPro", Err.description, Err.Number, Erl()
+    Resume Exit_
+End Function
+
+Function funQuickCode(strCode As String)
+'Aus der Menuetabelle wird die Funktion ausgesucht und aufgerufen
+'Die kurznummern werden direkt eingegeben
+Dim Rs1 As DAO.Recordset
+On Error GoTo Err_
+
+
+If strCode <> "" Then
+
+    Set Rs1 = CurrentDbC.OpenRecordset("SELECT tblMenDat.MdAktion, tblMenDat.MdTipp, tblMenDat.MDQuick " & _
+            "FROM tblMenDat WHERE (((tblMenDat.MDQuick) like '" & strCode & "'));")
+            
+    If Rs1.RecordCount = 1 Then
+        If Nz(Rs1!mdaktion) <> "" Then
+            'If Nz(rs1!mdtipp) <> "" Then funQuickCode = rs1!mdtipp
+            Eval (Mid(Rs1!mdaktion, 2, 50))
+        End If
+    End If
+    Rs1.Close
+    Set Rs1 = Nothing
+    
+End If
+                
+Exit_:
+Exit Function
+Err_:
+
+MsgErr "modDatenbank", "funQuickCode", Err.description, Err.Number, Erl()
+Resume Exit_
+        
+End Function
+
+
+Function funStrFinden(strWert As String) As String
+'Die funktion dient zum erweiterten finden von Worten
+'zwischen jedem Buchstaben wird ein * eingesetzt und somit auch Worte
+'gefunden die nicht ganz der Schreibweise entsprechen
+
+Dim str01 As String
+Dim z1 As Long
+
+On Error GoTo Err_
+
+If Nz(strWert) <> "" Then
+    str01 = "*"
+    For z1 = 1 To Len(Nz(strWert))
+        str01 = str01 & Mid(strWert, z1, 1) & "*"
+    Next z1
+End If
+
+funStrFinden = str01
+
+Exit_:
+Exit Function
+Err_:
+MsgErr "funStrFinden", "modDatenbank", Err.description, Err.Number, Erl()
+Resume Exit_
+
+End Function
+
+Function funLetzteDatensatzNr(strDBName As String, strDBFeld As String) As Long
+'Sucht die letzte eingegebene Datensatz Nummer
+'Diese Funktion ist für SQL notwendig da die Datensatz Nr erst nach dem
+'erstellen ausgelesen werden Kann
+
+'Die Funktion berücksichtigt gleichzeitig den Startwert 17.01.2006
+
+Dim Rs1 As DAO.Recordset
+Dim strSQL As String
+Dim lonHigh As Long
+
+On Error GoTo Err_
+
+'Auslesen ob übergabewert damit kein Zeitverzug zwischenspeichern
+lonHigh = funStartwert(strDBName)
+
+strSQL = "select max(" & strDBFeld & ") as maximum from " & strDBName & ";"
+Set Rs1 = CurrentDbC.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+'Fehler Abfangen wenn kein Datensatz besteht 2.2.2008
+If IsNull(Rs1!Maximum) Then
+    funLetzteDatensatzNr = 1
+    Rs1.Close
+    Set Rs1 = Nothing
+    Exit Function
+End If
+
+If lonHigh <= Rs1!Maximum Then
+    'Der höchste Datensatz wird übergebn
+    funLetzteDatensatzNr = Rs1!Maximum + 1
+Else
+    'Die vorgabe wird eingefügt
+    funLetzteDatensatzNr = lonHigh
+End If
+Rs1.Close
+Set Rs1 = Nothing
+
+Exit_:
+Exit Function
+Err_:
+MsgErr "funLetzeDatensatzNr", "modDatenbank", Err.description, Err.Number, Erl()
+funLetzteDatensatzNr = 0
+Resume Exit_
+
+End Function
+
+Function funBerichtAuflistung()
+'Listet alle Berichte der Datenbank im Direktfenster auf 17.0.2006
+
+Dim i As Byte
+Dim strListeneintrag As String
+Dim db As DAO.Database
+Dim Cnt As Container
+
+Set Cnt = CurrentDbC.Containers![Reports]
+
+For i = 0 To Cnt.Documents.count - 1
+    'Debug.Print Cnt.Documents(i).Name
+Next i
+
+Set Cnt = Nothing
+
+
+End Function
+
+Function funStartwert(strTblName As String) As Long
+'Die Funktion liest aus der Tabelle Startwerte die Werte aus 17.01.2006
+Dim Rs1 As DAO.Recordset
+Dim strSQL As String
+Dim strSp1 As String
+
+
+On Error GoTo Err_
+strSp1 = "ST" & strTblName
+
+strSQL = "SELECT tblIni.Kennung, tblIni.Wert1, tblIni.Wert2 FROM tblIni " & _
+        "WHERE (((tblIni.Wert1) Like '" & strSp1 & "'));"
+
+Set Rs1 = CurrentDbC.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+If Not Rs1.EOF Then
+    funStartwert = Nz(Rs1!Wert2)
+End If
+    
+Rs1.Close
+Set Rs1 = Nothing
+Exit_:
+Exit Function
+Err_:
+    MsgErr "modDatenbank", "funStartwert", Err.description, Err.Number, Err.Erl
+    Resume Exit_
+
+
+End Function
+
+
+
+Function funDbText(lonGruppe As Long, strFeld As String) As String
+
+'Liest einen Text als Standardtext aus den Vorgaben
+Dim Rs1 As DAO.Recordset
+Dim strSQL As String
+Dim strSp1 As String
+Dim lonBenutzer As Long
+
+
+strSQL = "SELECT tblAW.AW_Bez, tblAW.AW_Gruppe, tblAW.AW_Wert " & _
+ "FROM tblAW WHERE (((tblAW.AW_Bez) Like '" & strFeld & "') AND ((tblAW.AW_Gruppe)=" & lonGruppe & "));"
+
+Set Rs1 = CurrentDbC.OpenRecordset(strSQL, dbOpenDynaset, dbSeeChanges)
+
+
+If Not Rs1.EOF Then
+    strSp1 = Nz(Rs1!AW_Wert)
+Else
+    strSp1 = ""
+End If
+    
+Rs1.Close
+Set Rs1 = Nothing
+    
+funDbText = strSp1
+End Function
+
+
+Function funDBpruefen()
+'Prüft ob alle temp Tabellen vorhanden sind
+Dim Rs1 As DAO.Recordset
+Dim strSQL As String
+ 
+ 
+'Tabelle Arbeiten extern
+If funTabelleVorhanden("tblArbeitOfline") = False Then
+strSQL = "(CREATE TABLE tblArbeitOfline " & _
+        "EaID  integer, " & _
+        "EATabelle text," & _
+        "EAIDFeld text, " & _
+        "EAIDWert integer ," & _
+        "EAErfasstAm date, " & _
+        "EAErfasstVon text, " & _
+        "EAServerUpdate Boolean, " & _
+        "EAServerAM Date, " & _
+        "EANeu Boolean, " & _
+        "EADel Boolean, " & _
+        "EAEdit Boolean, " & _
+        "PRIMARY KEY EAID);"
+        'Debug.Print strSql
+'CurrentDbC.Execute strsql, dbFailOnError
+End If
+Set Rs1 = Nothing
+
+End Function
+
+Public Function funSTextS1() As String
+
+'funSTextS1 = Nz(Forms!f_Standardtexte.varS1, "")
+
+End Function
+
+Public Function funSTextS2() As String
+
+'funSTextS2 = Nz(Forms!f_Standardtexte.VarS2, "")
+
+End Function
+
+Public Function funSTextS3() As String
+
+'funSTextS3 = Nz(Forms!f_Standardtexte.VarS3, "")
+
+End Function

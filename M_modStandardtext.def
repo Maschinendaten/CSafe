@@ -1,0 +1,34 @@
+Option Compare Database
+Option Explicit
+
+Function funStandardtext(originalText As String, Optional gesperrt As Boolean) As String
+
+' die Variable strTexstinhalt wird von dem Formular "frmStandardtexte"
+' mit der Funktion Klick beschrieben mit dem Wert des gewählten Feldes
+
+
+If gesperrt = True Then
+    funStandardtext = originalText
+    Exit Function
+End If
+
+gloStandardtext = originalText
+
+DoCmd.OpenForm "f_Standardtexte", , , , , acDialog
+If Nz(gloStandardtext, "") = "nix" Then
+    funStandardtext = originalText
+Else
+    funStandardtext = gloStandardtext
+End If
+
+End Function
+
+
+Public Sub MsgErr(strForm As String, strFunctionSub As String, strFehlerText As String, lonFehlerNr As String, erl_Fehlerzeile As Long)
+'Zentrale Ausgabe aller Warnmeldungen oder Fehler zu Protokolliereung
+    MsgBox ("Fehler in Form :" & strForm & vbCrLf & _
+            "bei Aktion     :" & strFunctionSub & vbCrLf & _
+            "Fehler         :" & strFehlerText & vbCrLf & _
+            "Fehlernummer   :" & lonFehlerNr & vbCrLf & _
+            "In Zeile       :" & erl_Fehlerzeile)
+End Sub

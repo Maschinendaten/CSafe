@@ -1,0 +1,11 @@
+Option Compare Database
+Option Explicit
+
+
+
+
+Function menVerwaltung()
+
+DoCmd.OpenForm "f_Verwaltung"
+
+End Function

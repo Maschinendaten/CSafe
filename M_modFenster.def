@@ -1,0 +1,194 @@
+Option Compare Database
+Option Explicit
+Dim gloBreiteF3 As Long
+Public gloAktivF3 As String
+
+
+Function funFensterAnordnen(Optional AktivF3 As String, Optional NurRechts As Boolean)
+'Wenn nur rechts True ist wird nur das Rechte Formular ausgerichtet
+'Voraussetzung ist das der Name AktivF3 auch ein rechtes Formular ist
+Dim lx As Long
+Dim ly As Long
+Const lxMax = 9300
+
+lx = (GetAccessWindowSize(saVertical) * TwipsPerPixelX) - 2800 'höhe
+ly = (GetAccessWindowSize(saHorizontal) * TwipsPerPixelY)
+
+'Stop
+
+'Form_f_Analyse01.WindowWidth
+If NurRechts Then GoTo SprungRechts
+
+'Positioniert das ganz linke Formular
+Form_f_Analyse01.SetFocus
+DoCmd.MoveSize 0, 0, Form_f_Analyse01.WindowWidth, lx
+
+'Me.subTreeView.Width
+If Form_f_Analyse01.WindowHeight > 3200 Then Form_f_Analyse01.subTreeView.Height = Form_f_Analyse01.WindowHeight - 1200
+If Form_f_Analyse01.WindowWidth > 900 Then Form_f_Analyse01.subTreeView.Width = Form_f_Analyse01.WindowWidth - 230
+
+funSpeicherReg "f_Analyse01", "FensterHoehe", str(Form_f_Analyse01.WindowHeight)
+funSpeicherReg "f_Analyse01", "FensterBreite", str(Form_f_Analyse01.WindowWidth)
+
+
+Form_f_Analyse01.liTreeAbfrage.Width = Form_f_Analyse01.WindowWidth - 1500
+
+
+If funFormOpen("f_Gefae") Then
+    Form_f_Gefae.SetFocus
+    DoCmd.MoveSize Form_f_Analyse01.WindowWidth, 0, , Form_f_Analyse01.WindowHeight
+    Exit Function
+End If
+
+If funFormOpen("f_Copy") Then
+    Form_f_Copy.SetFocus
+    DoCmd.MoveSize Form_f_Analyse01.WindowWidth, 0, , Form_f_Analyse01.WindowHeight
+    Exit Function
+End If
+
+
+
+'Position des mittleren Formulars
+If funFormOpen("f_Analyse02") Then
+    Form_f_Analyse02.SetFocus
+    DoCmd.MoveSize Form_f_Analyse01.WindowWidth, 0, 10800, Form_f_Analyse01.WindowHeight
+    If lx > lxMax Then
+        Form_f_Analyse02.varNorm.Height = lx - lxMax + 100
+        Form_f_Analyse02.CheckText.Height = lx - lxMax + 1500
+        Form_f_Analyse02.InfoText.Height = lx - lxMax + 1500
+        
+    End If
+End If
+
+'Wenn Druck offen Keine weiteren Formulare laden
+    If funReportOpen("b_BerRi01", True) Then
+       ' Exit Function
+'        DoCmd.Close acReport, "b_BerRi01"
+'        DoCmd.OpenReport "b_BerRi01", acViewPreview
+'        DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0
+'       Report_b_BerRi01.SetFocus
+'       DoCmd.MoveSize 1, 1
+'       Debug.Print Report_b_BerRi01.Name
+'       Report_b_BerRi01.RecordSource = Report_b_BerRi01.RecordSource
+'       Report_b_BerRi01.WindowHeight
+'
+'       DoCmd.MoveSize 1, 1 'Report_b_BerRi01
+        
+    End If
+
+
+
+'##MG test aus
+'If AktivF3 = "" Then
+'    AktivF3 = gloAktivF3
+'Else
+'    gloAktivF3 = AktivF3
+'End If
+
+SprungRechts:  'Sprungmarke wenn nur rechts angewählt
+
+If funFormOpen("f_Analyse02") Then
+    gloBreiteF3 = ly - Form_f_Analyse01.WindowWidth - Form_f_Analyse02.WindowWidth - 300
+Else
+    Exit Function
+End If
+subFormRechtsAus (AktivF3) 'schaltet alle Formulare rechts aus außer das angegebene
+Select Case AktivF3
+    Case "f_Standardtexte"
+   
+    If funFormOpen("f_Standardtexte") Then
+        'Position des Standarttextes
+        Form_f_Standardtexte.SetFocus
+        DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+        
+        'Auswahlliste
+        If Form_f_Standardtexte.WindowHeight > 5500 Then Form_f_Standardtexte.LiTexte.Height = Form_f_Standardtexte.WindowHeight - 5000
+        'If Form_f_Standardtexte.WindowWidth > 900 Then Form_f_Standardtexte.LiTexte.Width = Form_f_Standardtexte.WindowWidth - 300
+            
+    End If
+    Case "f_GefaeAW"
+        'Position des GefahrAW
+        If funFormOpen("f_GefaeAW") Then
+            Form_f_GefaeAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+    Case "f_GefahrAW"
+        'Position des GefahrAW
+        If funFormOpen("f_GefahrAW") Then
+            Form_f_GefahrAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+    Case "f_LPhaseAW"
+        'Position des LPhaseAW
+        If funFormOpen("f_LPhaseAW") Then
+            Form_f_LPhaseAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+    Case "f_AufKategorieED"
+        'Position des LPhaseAW
+        If funFormOpen("f_AufKategorieED") Then
+            Form_f_AufKategorieED.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+
+    Case "f_NormAW"
+        'Position des LPhaseAW
+        If funFormOpen("f_NormAW") Then
+            Form_f_NormAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+     Case "f_OrtAW"
+        'Position des LPhaseAW
+        If funFormOpen("f_OrtAW") Then
+            Form_f_OrtAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+        
+     Case "f_BetriebsartenAW"
+        'Position des BetriebsartenAW
+        If funFormOpen("f_BetriebsartenAW") Then
+            Form_f_BetriebsartenAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+        End If
+        
+     Case "f_RiBaumAw"
+            funFormOpen "f_RiBaumAw", True
+            Form_f_RiBaumAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+
+    Case "f_MRLAw"
+        If funFormOpen("f_MRLAw") Then
+            Form_f_MRLAW.SetFocus
+            DoCmd.MoveSize Form_f_Analyse01.WindowWidth + Form_f_Analyse02.WindowWidth, 0, gloBreiteF3, Form_f_Analyse01.WindowHeight
+            Form_f_MRLAW.Bez.Width = Form_f_MRLAW.WindowWidth - 1400
+            Form_f_MRLAW.Bez_.Width = Form_f_MRLAW.WindowWidth - 2400
+        End If
+
+End Select
+
+
+End Function
+
+
+Sub subFormRechtsAus(sFormName As String)
+If OnErRe Then On Error Resume Next
+'abgeschalten am 20180409
+'            Form_f_Standardtexte.visible = ("f_Standardtexte" = sFormName)
+'            Form_f_GefahrAW.visible = ("f_GefahrAW" = sFormName)
+'            Form_f_LPhaseAW.visible = ("f_LPhaseAW" = sFormName)
+'            Form_f_AufKategorieED.visible = ("f_AufKategorieED" = sFormName)
+'            Form_f_NormAW.visible = ("f_NormAW" = sFormName)
+'            Form_f_OrtAW.visible = ("f_OrtAW" = sFormName)
+'            Form_f_GefaeAW.visible = ("f_GefaeAW" = sFormName)
+'            Form_f_RiBaumAW.visible = ("f_RiBaumAw" = sFormName)
+'            Form_f_BetriebsartenAW.visible = ("f_BetriebsartenAW" = sFormName)
+'            Form_f_MRLAW.visible = ("f_MRLAW" = sFormName)
+
+End Sub

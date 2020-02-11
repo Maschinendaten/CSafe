@@ -1,0 +1,160 @@
+Option Compare Database
+Option Explicit
+
+
+Public Const OnErRe = False 'Global Konstante wenn False wird if onerre then On Error Resume Next nicht ausgeführt
+
+
+'Private Declare Function GetAsyncKeyState Lib "user32" (ByVal vKey As Long) As Integer
+    'Aus http://vb-tec.de/inkey.htm 18.8.2012
+
+
+
+
+Function funStart()
+
+Dim Key As Long
+
+'Diese Funktion sollte beim Start ausgeführt werden.
+
+#If Win64 Then
+    MsgBox "64 Bit MSAccess"
+#Else
+    MsgBox "32 Bit MSAccess"
+#End If
+
+
+
+
+If funInstallCheck = 2 Then
+    If MsgBox("Die Installation von CSafe ist in diesem Verzeichnis nicht vorhanden oder unvollständig. Mit OK wird CSafe korrekt installiert.", vbOKCancel) = vbOK Then
+        funInstall  'Die Installation wird ausgeführt
+    Else
+        DoCmd.Close
+    End If
+End If
+
+
+
+
+'Startet das Globale errorHandling von http://www.everythingaccess.com 18.8.2012
+'Call EnableWatchdog
+
+'funCheckRef
+
+''Verändert den Start wenn die Taste i gedückt wird
+'If CBool(GetAsyncKeyState(73) And &H8000) Then _
+'      'Die Taste i =105 I=73 ist gedrückt
+'      MsgBox FunVerweiseAnzeigen()
+'End If
+'
+''Tastatur-Codes sammeln:
+'For key = 1 To 255
+'  If CBool(GetAsyncKeyState(key) And &H8000) Then _
+'      Debug.Print Chr$(key)
+'Next key
+'
+
+ Command
+
+
+DoCmd.OpenForm "f_Start"
+
+
+
+End Function
+
+
+
+Public Function EnableWatchdog()
+Dim sBody As String
+
+'Startet die Globale fehlerbehandlung und ist super 18.8.2012 / 2018 abgeschalten zu alt
+
+    'Call ErrEx.Enable("GlobalErrorTrap")
+     
+     
+'Stellt einen deutschen text ein
+ 
+'If gloDebug = False Then
+'     sBody = "<font face=Arial size=13pt color=""#4040FF"">" & _
+'             "<b>Ein Fehler ist aufgetreten. Der Fehler wird in <br>" & _
+'             "der Datei [CSafe_ErrorLog.txt]protokolliert. <br>" & _
+'             "Mailen Sie diese Datei an: [info@CSafe.biz] zur Analyse.</b></font><br><br> " & _
+'             "<b><ERRDESC></b><br><br>" & _
+'             "Source:|<SOURCEPROJ>.<SOURCEMOD>.<SOURCEPROC><br>" & _
+'             "Number:|&H<ERRNUMBERHEX> (<ERRNUMBER>)<br>" & _
+'             "Source Line:|#<SOURCELINENUMBER>.     <i><SOURCELINECODE></i><br>" & _
+'             "Date/Time:|<ERRDATETIME><br><br>" & _
+'             "<b><u>What do you want to do?</u></b>"
+'
+'     'ErrEx.DialogOptions.HTML_MainBody = sBody
+'
+'     'Schaltet alle Tasten aus
+'     With ErrEx.DialogOptions
+'        .RemoveAllButtons
+'        .AddButton "Procedure Beenden", BUTTONACTION_ONERROREXITPROCEDURE
+'     End With
+'End If
+          
+     
+     
+     
+     
+End Function
+
+Public Sub GlobalErrorTrap()
+
+     LogErrorToFile  ' Immer Fehler
+
+End Sub
+
+
+Public Sub LogErrorToFile()
+    
+'    Dim FilePath As String
+'    Dim FileNum As Long
+'    Dim LogLine As String
+'    Dim sDir As String
+'    If OnErRe Then If OnErRe Then On Error Resume Next ' If this procedure fails, something fairly major has gone wrong.
+'
+'    ' We will write to a simple text file called SampleErrorLog in our MyDocuments folder
+'    sDir = Left(CurrentDb.Name, Len(CurrentDb.Name) - Len(Dir(CurrentDb.Name)))
+'    'CreateObject("WScript.Shell").SpecialFolders("MYDOCUMENTS")   'Original Datenbankpfad
+'    FilePath = sDir & "\CSafe_ErrorLog.txt"
+'
+'    ' If you're new to vbWatchdog, don't worry about what follows just yet.
+'    ' It is basically iterating through the call stack to get more details about the error.
+'
+'    FileNum = FreeFile
+'    Open FilePath For Append Access Write Lock Write As FileNum
+'
+'        Print #FileNum, Now() & " - " & CStr(ErrEx.Number) & " - " & CStr(ErrEx.description)
+'
+'        'We will seperate the call stack onto seperate lines in the log
+'    With ErrEx.Callstack
+'            Do
+'                Print #FileNum, "       --> " & .ProjectName & "." & _
+'                                .ModuleName & "." & _
+'                                .ProcedureName & ", " & _
+'                                "#" & .LineNumber & ", " & _
+'                                .LineCode & vbCrLf
+'            Loop While .NextLevel
+'    End With
+'
+'    Close FileNum
+'
+
+End Sub
+
+
+'Beispiel wenn Error lokal verarbeitet wird
+'ON error Goto Err_
+'Err_:
+'If Err.Number = 2450 Then
+'    MsgBox ("Es muß ein Beleg angelegt und geöffnet sein! Wohin wollen Sie sonst schreiben!")
+'    'Property Not Found
+'    Exit Function
+'
+''An unexpected error has occured
+'ErrEx.CallGlobalErrorHandler

@@ -1,0 +1,80 @@
+Option Compare Database
+Option Explicit
+
+' MG Datenbank tool alles was man so zum programmieren brauch :-) erstellt am 2015 03 23
+
+
+
+Function st(Optional ohneField As Boolean)
+'Function show Tables zeigt alle tabellen in der Aplikation
+
+Dim db As DAO.Database
+Dim tdf As DAO.TableDef
+    Set db = CurrentDb
+    For Each tdf In db.TableDefs
+        If Left(tdf.Name, 4) = "MSys" Then 'Alle Systemtabellen aussschliessen
+        Else
+            If ohneField = True Then
+                Debug.Print tdf.Name  ', tdf.DateCreated
+            Else
+                Debug.Print "sf " & Chr(34) & tdf.Name & Chr(34)
+            End If
+        End If
+    Next tdf
+    Set db = Nothing
+
+
+
+
+End Function
+
+Function SF(sTabelle As String, Optional sPraefix As String, Optional sSufix As String)
+'Function  show fields zeigt alle felder in der Tabelle
+Dim tdf As DAO.TableDef
+Dim fld As DAO.Field
+Dim db As DAO.Database
+Dim S1 As String
+
+
+    Set db = CurrentDb
+    For Each tdf In db.TableDefs
+        If tdf.Name = sTabelle Then
+            For Each fld In tdf.Fields
+                'für eingabe in Code
+                If sPraefix = "" Then
+                    S1 = "rs1!" & fld.Name ', fld.Type, fld.Size
+                Else
+                    S1 = sPraefix & fld.Name ', fld.Type, fld.Size
+                End If
+                If sSufix <> "" Then
+                
+                    S1 = S1 & sSufix
+                End If
+                Debug.Print S1
+            Next fld
+        End If
+     Next tdf
+    Set db = Nothing
+
+
+End Function
+
+
+
+Function Help()
+    Debug.Print "ST Show Tabels"
+    Debug.Print "SF Show Fields   sf """" tblAnschreiben"",""Rs1!", "; dsd; "; ""
+    
+End Function
+
+Public Sub dp(Text As String, Optional ZeitJA As Boolean, Optional TextDateiJA As Boolean)
+
+If ZeitJA = True Then
+    Debug.Print Now, Text
+Else
+    Debug.Print Text
+End If
+
+
+
+End Sub

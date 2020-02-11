@@ -1,0 +1,53 @@
+Option Compare Database
+Option Explicit
+
+'Ribbon Deutsch
+'
+'lngID   RibbonName  RibbonXml
+'1   CSafe "
+'<!-- Created with IDBE RibbonCreator 2010 (Version: 1.1017) -->"
+'<!--                http://www.RibbonCreator2010.com               -->
+'<!--                 http://www.RibbonCreator2010.de               -->
+'
+'<!--Images are store in current Database - Do NOT delete this remark-->
+'
+'<customUI xmlns=""http://schemas.microsoft.com/office/2009/07/customui"" onLoad=""OnRibbonLoad"" loadImage=""LoadImages"">
+'  <commands>
+'      <command idMso=""Help"" enabled=""true""/>
+'      <command idMso=""WindowClose"" enabled=""true""/>
+'      <command idMso=""WindowRestore"" enabled=""true""/>
+'      <command idMso=""WindowMinimize"" enabled=""true""/>
+'  </commands>
+'
+'  <ribbon startFromScratch=""false"">
+'    <tabs>
+'      <tab id=""tab0"" label=""Csafe"" getVisible =""GetVisible"" tag = ""RibbonName:=CSafe;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:="" >
+'        <group id=""grp0"" autoScale=""false"" centerVertically=""false"" label=""Exit"" getVisible =""GetVisible"" tag = ""RibbonName:=;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" >
+'          <button id=""btn0"" size=""large"" label=""EXIT"" imageMso=""CancelRequest"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'        </group>
+'        <group id=""grp2"" autoScale=""false"" centerVertically=""false"" label=""Projekt Risikobeurteilung"" getVisible =""GetVisible"" tag = ""RibbonName:=;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" >
+'          <button id=""btn3"" size=""large"" label=""OPEN NEW"" screentip=""neu &#246;ffnen kopieren"" supertip=""Dateie m&#252;ssen nicht gespeichert werden &#196;nderungen werden automatisch gespeichert."" imageMso=""FilesToolNewFolderGallery"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'          <separator id=""sep7"" getVisible=""GetVisible"" />
+'          <button id=""btn4"" size=""large"" label=""bearbeiten Stammdaten"" screentip=""bearbeiten die Stammdaten"" supertip=""Projektname Projektnummer Kunde usw."" imageMso=""EditForm"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'          <separator id=""sep6"" getVisible=""GetVisible"" />
+'          <button id=""btn5"" size=""large"" label=""bearbeiten Risikobeurteilung"" screentip=""bearbeiten der Risikobeurteilung"" supertip=""bearbeitet der einzelnen Gefahren und Gefahrenstellen"" getImage=""GetImages"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=StarEdit.jpg;CustomPicturePath:=C:\Daten\Duessel\Csafe\Web\"" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'          <separator id=""sep13"" getVisible=""GetVisible"" />
+'          <button id=""btn12"" size=""large"" label=""anf&#252;gen Gef&#228;hrdung"" screentip=""f&#252;gt eine Gef&#228;hrdung an"" supertip=""Sie k&#246;nnen aus den vorgegebenen Gef&#228;rdungen eine ausw&#228;hlen."" imageMso=""AnimationAddGallery"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'          <separator id=""sep_13"" getVisible=""GetVisible"" />
+'          <button id=""btn_14"" size=""large"" label=""kopieren Gef&#228;hrdung"" screentip=""Kopiert eine Gef&#228;hrdung"" supertip=""Kopiert Gef&#228;hrdungen aus jedem Projekt inkl. aller Anlagen usw."" getImage=""GetImages"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=StarCopy01.jpg;CustomPicturePath:=N:\AA_MG\Duessel\Csafe\Web\"" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'        </group>
+'        <group id=""grp3"" autoScale=""false"" centerVertically=""false"" label=""Auswertung"" getVisible =""GetVisible"" tag = ""RibbonName:=;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" >
+'          <button id=""btn8"" size=""large"" label=""pr&#252;fen"" screentip=""pr&#252;ft die Risikobeurteilung "" supertip=""Die Risikobeurteilung wird auf Plausibilit&#228;t gepr&#252;ft."" imageMso=""AcceptInvitation"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'          <separator id=""sep10"" getVisible=""GetVisible"" />
+'          <button id=""btn9"" size=""large"" label=""drucken"" screentip=""druckt die Risikobeurteilung"" supertip=""Es wird ein Men&#252; ge&#246;ffnet mit dem die Druckausgabe parametriert werden kann."" imageMso=""FilePrint"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'        </group>
+'        <group id=""grp5"" autoScale=""false"" centerVertically=""false"" label=""Extras"" getVisible =""GetVisible"" tag = ""RibbonName:=;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" >
+'          <button id=""btn14"" size=""large"" label=""Extras"" imageMso=""AddInManager"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'        </group>
+'        <group id=""grp4"" autoScale=""false"" centerVertically=""false"" label=""Info"" getVisible =""GetVisible"" tag = ""RibbonName:=;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=;CustomPicturePath:="" >
+'          <button id=""btn11"" size=""large"" screentip=""Information &#252;ber CSafe"" supertip="" "" getImage=""GetImages"" tag=""RibbonName:=CSafe;inMenu:=;CustomTagValue1:=;CustomTagValue2:=;CustomTagValue3:=;CustomPicture:=CSafe_500_gelb.png;CustomPicturePath:=N:\AA_MG\Duessel\Csafe\Werbung\Logo\"" onAction=""OnActionButton"" getVisible=""GetVisible"" getEnabled=""GetEnabled"" />
+'        </group>
+'      </tab>
+'    </tabs>
+'  </ribbon>
+'</customUI>"

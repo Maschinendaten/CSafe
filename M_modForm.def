@@ -1,0 +1,204 @@
+Option Compare Database
+Option Explicit
+
+
+
+ Public Type Koordinaten
+    X As Long
+    Y As Long
+ End Type
+ 
+Type RECT
+   Left As Long
+   Top As Long
+   Right As Long
+   Bottom As Long
+End Type
+
+#If Win64 Then
+
+    Private Declare PtrSafe Function FindWindow Lib "user32.dll" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long
+    Declare PtrSafe Function IsZoomed Lib "user32" (ByVal hwnd As Long) As Long
+    Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hwnd As Long, lpRect As RECT) As Long
+    Declare PtrSafe Function ShowWindow Lib "user32" (ByVal hwnd As Long, ByVal nCmdShow As Long) As Long
+    Declare PtrSafe Function MoveWindow Lib "user32" (ByVal hwnd As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Declare PtrSafe Function GetParent Lib "user32" (ByVal hwnd As Long) As Long
+#Else
+
+    Private Declare Function FindWindow Lib "user32.dll" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long
+    Declare Function IsZoomed Lib "user32" (ByVal hwnd As Long) As Long
+    Declare Function GetWindowRect Lib "user32" (ByVal hwnd As Long, lpRect As RECT) As Long
+    Declare Function ShowWindow Lib "user32" (ByVal hwnd As Long, ByVal nCmdShow As Long) As Long
+    Declare Function MoveWindow Lib "user32" (ByVal hwnd As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long
+    Declare Function GetParent Lib "user32" (ByVal hwnd As Long) As Long
+
+#End If
+
+
+
+
+'Const SW_MAXIMIZE = 3
+Const SW_SHOWNORMAL = 1
+
+Sub MaximizeRestoredForm(F As Form)
+   Dim MDIRect As RECT
+   Dim retVal As Long
+
+   ' If the form is maximized, restore it.
+   If IsZoomed(F.hwnd) <> 0 Then
+      retVal = ShowWindow(F.hwnd, SW_SHOWNORMAL)
+   End If
+
+   ' Get the screen coordinates and window size of the
+   ' MDIClient window.
+   retVal = GetWindowRect(GetParent(F.hwnd), MDIRect)
+
+   ' Move the form to the upper-left corner of the MDIClient
+   ' window (0,0) and size it to the same size as the
+   ' MDIClient window.
+   retVal = MoveWindow(F.hwnd, 0, 0, MDIRect.Right - _
+      MDIRect.Left - 4, MDIRect.Bottom - MDIRect.Top - 4, True)
+End Sub
+
+
+Function AddAppProperty(strName As String, varValue As Variant) As Integer
+'AddAppProperty(strName As String, varType As Variant, varValue As Variant) As Integer
+ Dim vartype
+        
+        
+    Dim dbs As Object, prp As Variant
+    Const conPropNotFoundError = 3270
+
+    Set dbs = CurrentDb
+    On Error GoTo AddProp_Err
+    dbs.Properties(strName) = varValue
+    AddAppProperty = True
+
+AddProp_Bye:
+    Exit Function
+
+AddProp_Err:
+    If Err = conPropNotFoundError Then
+        Set prp = dbs.CreateProperty(strName, dbText, varValue)
+        dbs.Properties.Append prp
+        Resume
+    Else
+        AddAppProperty = False
+        Resume AddProp_Bye
+    End If
+End Function
+
+Function funFormOpen(ArgName As String, Optional oeffnen As Boolean) As Boolean
+'Die Funktion prüft ob ein Formular mit dem Angegebenem Namen geöffnet ist.
+'wenn die Option öffnen true ist wird das Formular geöffnet
+Dim Sp1 As Long
+
+    funFormOpen = False
+    Sp1 = SysCmd(acSysCmdGetObjectState, acForm, ArgName)
+    If Sp1 > 0 Then
+        funFormOpen = True
+    Else  'wenn das Formular nicht offen ist prüfen ob es geöffnet werden soll
+        If oeffnen = True Then
+            DoCmd.OpenForm ArgName
+        
+            
+        End If
+    End If
+    
+    
+End Function
+
+Function funReportOpen(ArgName As String, Optional RefreshRep As Boolean) As Boolean
+'Die Funktion prüft ob ein Report mit dem Angegebenem Namen geöffnet ist.
+'wenn die Option RefreshRep true ist wird der geöffnete Report refresht
+Dim Sp1 As Long
+Dim x1 As Long
+Dim y1 As Long
+Dim H1 As Long
+Dim w1 As Long
+Dim ber As Report
+'Stop
+'Exit Function
+
+    funReportOpen = False
+    Sp1 = SysCmd(acSysCmdGetObjectState, acReport, ArgName)
+    If Sp1 > 0 Then
+'        Set ber = Reports(ArgName)
+'        'Erst Position merken
+'        x1 = ber.WindowTop
+'        y1 = ber.WindowLeft
+'        H1 = ber.WindowHeight
+'        w1 = ber.WindowLeft
+        'bericht schließen
+        'DoCmd.Close acReport, ArgName
+        'Bericht erneut öffnen
+        'DoCmd.OpenReport ArgName, acViewPreview
+        'Wieder auf Position schieben
+        'DoCmd.MoveSize x1, y1, w1, H1
+        funReportOpen = True
+     End If
+    
+    
+End Function
+
+Function funFormsClose()
+'Schließt alle Formulare ausser Start
+Dim itm As Form
+Dim Rep As Boolean
+
+'Mittlere Form zuerst schließen sonst Fehler
+If funFormOpen("f_Analyse02") Then DoCmd.Close acForm, "f_Analyse02"
+
+Rep = True
+    While Rep
+        Rep = False 'Für so lange wiederholung bis alle zu
+        For Each itm In Forms
+            
+            If itm.Name <> "f_Start" Then
+                DoCmd.Close acForm, itm.Name
+                Rep = True
+            End If
+    
+        Next
+    Wend
+End Function
+
+
+'######################### Auslesen Win Position
+
+Private Function AccessHandle()
+'Handle des Access-Fensters
+  Const AccClassName = "OMain"  'ermittelt mit API-Funktion GetClassName
+  AccessHandle = FindWindow(AccClassName, vbNullString)
+End Function
+
+Private Function FormPositionAbs(Handle As Long) As Koordinaten
+'Gibt die Koordinaten der linken, oberen Ecke in Bezug auf den Bildschirm aus, in Twips
+ Dim R As RECT
+ GetWindowRect Handle, R
+  
+ FormPositionAbs.X = R.Left * 15   '(1 Pixel = 15 Twips)
+ FormPositionAbs.Y = R.Top * 15
+End Function
+
+Public Function FormPosition _
+ (frm As Form, Optional Menue As Boolean = True, Optional Symb As Byte = 1) _
+ As Koordinaten
+'Gibt die Position der linken, oberen Ecke des Formulars zurück.
+'Als "MoveSize"-Werte: 0/0 ist links oben unter den Symbolleisten, in Twips
+'Symb: Anzahl der Symbolleisten
+ Const dp = True
+  
+ Const RandLinks = 90      'Breite des linken Randes in Twips
+ Const Titelleiste = 480   'Höhe der Titelleiste "Microsoft Access" in Twips
+ Const Menueleiste = 345
+ Const Symbolleiste = 390
+
+  
+ FormPosition.X = FormPositionAbs(frm.hwnd).X - FormPositionAbs(AccessHandle).X - RandLinks
+ FormPosition.Y = FormPositionAbs(frm.hwnd).Y - FormPositionAbs(AccessHandle).Y - Titelleiste _
+                  + Menue * Menueleiste - Symb * Symbolleiste               'Menue = -1
+                  
+ 'If dp Then Debug.Print FormPosition.x, FormPosition.Y
+                  
+End Function

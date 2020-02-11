@@ -1,0 +1,43 @@
+Option Compare Database
+Option Explicit
+
+'info von http://www.vbarchiv.net/workshop/details.php?id=21
+
+#If Win64 Then
+    Public Declare PtrSafe Function WritePrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+    Public Declare PtrSafe Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+  
+#Else
+    Public Declare Function WritePrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+    Public Declare Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+#End If
+  
+  
+  
+  
+' Eintrag aus INI-Datei lesen
+Public Function GetIniString(ByVal Sektion As String, _
+  ByVal Titel As String, ByVal Vorgabe As String, _
+  ByVal INIFile As String, _
+  Optional ByVal nSize As Integer = 256) As String
+ 
+  Dim lResult As Long
+  Dim sValue As String
+ 
+  sValue = Space$(nSize)
+  lResult = GetPrivateProfileString(Sektion, Titel, _
+    Vorgabe, sValue, nSize, INIFile)
+  GetIniString = Left$(sValue, lResult)
+End Function
+
+Sub testini()
+
+' Einzelnen Eintrag im Abschnitt "Start" lesen
+Dim sValue As String
+sValue = GetIniString("Start", "Datum prüfen", "nix", CurrentProject.Path & "\csafe.ini")
+
+WritePrivateProfileString "Start", "Schnulli", "Alter Sackiiiiiiiii", CurrentProject.Path & "\csafe.ini"
+
+'Debug.Print sValue
+
+End Sub

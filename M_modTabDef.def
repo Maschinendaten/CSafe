@@ -1,0 +1,85 @@
+Option Compare Database
+Option Explicit
+
+
+Function funGet_TableDefs(Optional Befehl_ As String) As Boolean
+'Liest die Tabbellendeffinition aus und speichert diese in der Tabelle Pruefen
+'wenn Save angegeben ist wird der String in dem Feld tfeldSave gespeichert ansonsten in dem
+'Feld tFeld
+' ? funGet_TableDefs("Save") 'macht die aktuell geladene Datenbank zur Vorlage
+
+    Dim tdf As DAO.TableDef
+    Dim fld As DAO.Field
+    Dim prp As DAO.Property
+    Dim sSql As String
+    Dim st As String
+    Dim SF As String
+    Dim SP As String
+    Dim z1 As Long
+    Dim Rs1 As DAO.Recordset
+    Dim bOK As Boolean
+    
+'löscht die Tabelle
+If Befehl_ = "Save" Then
+    DoCmd.SetWarnings False
+    DoCmd.RunSQL "DELETE FROM t_pruefen;"
+    DoCmd.SetWarnings True
+End If
+    
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_pruefen")
+If Befehl_ <> "Save" Then
+    Rs1.MoveFirst
+End If
+    
+    bOK = True
+    
+    For Each tdf In CurrentDb.TableDefs
+        If Left(tdf.Name, 4) <> "MSys" And Left(tdf.Name, 4) <> "USys" And tdf.Name <> "t_install" Then
+            st = "Tabelle:" & tdf.Name
+            For Each fld In tdf.Fields
+                SF = " Feld:" & fld.Name
+                If OnErRe Then If OnErRe Then On Error Resume Next
+                    'Nötig, da nicht alle Felder eine Beschreibung haben
+                    SP = " Typ:" & fld.type '& "  Rem: '" & fld.Properties("Description") & "'"
+                
+                    For Each prp In fld.Properties     'Liefert alle Feldeigenschaften
+'                        sP = sP & " Prop:" & prp.Name & " -> '" & _
+'                                     prp.Value & "'|" & prp.type & "|" & prp.Inherited & "|"
+                        If prp.Name = "Size" Then SP = SP & "|" & prp.Value
+                    Next prp
+                    z1 = z1 + 1
+                    If Befehl_ = "Save" Then
+                        Rs1.AddNew
+                        Rs1!TFeldSave = str(z1) & ")" & st & SF & SP
+                        Rs1.Update
+                    Else
+                        'muss geändert werden darf nur in der zweiten Spalte ergänzen 17.3.2013
+                        
+                        If Rs1.EOF = True Then
+                            Rs1.AddNew
+                        Else
+                            Rs1.Edit
+                        End If
+                        
+                        Rs1!TFeld = str(z1) & ")" & st & SF & SP
+                        
+                        If Rs1!TFeld <> Rs1!TFeldSave Then bOK = False
+                        
+                        Rs1.Update
+                        Rs1.MoveNext
+                    End If
+                On Error GoTo 0
+            Next fld
+        End If 'My Sys ausschließen
+    Next tdf
+    Set Rs1 = Nothing
+    
+    funGet_TableDefs = bOK
+End Function
+
+Function funCheck_TableDefs() As Boolean
+'Vergleicht die verbundenen Tabellen mit der für die Version notwendigen.
+'gibt die erste Fehlerhafte Tabelle aus
+
+
+End Function

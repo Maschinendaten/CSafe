@@ -1,0 +1,44 @@
+Option Compare Database
+Option Explicit
+'------------------------------------------------------------------
+' Diese Funktion ermöglicht das aufteilen des OpenArgs in mehrerer Felder
+' PosNr ist die Nummer des Textes der ausgelesen werden soll 1 ist der erste Text
+' strOpenArgs ist der String der übergeben wird als Trennzeichen wird ein ; (Semikolon) verwendet
+' Bsp. lonPosNr=2 strOpenArgs = "frmTest;123xy;Datenfeld"   das ergebis = "123xy"
+
+Function funOpenArgs(lonPosNr As Long, strOpenArgs As String) As String
+Dim z1 As Long
+Dim zP1 As Long
+Dim zP2 As Long
+    'Wenn kein Wert übergeben
+    If Nz(strOpenArgs) = "" Then
+        funOpenArgs = ""
+        Exit Function
+    End If
+    zP1 = 1
+    zP2 = 0
+        
+    For z1 = 1 To Len(strOpenArgs)
+        If Mid(strOpenArgs, z1, 1) = ";" Then
+            zP2 = zP2 + 1
+                'Wenn Wert gefunden und inhalt
+                If zP2 = lonPosNr Then
+                    funOpenArgs = Mid(strOpenArgs, zP1, z1 - zP1)
+                    Exit Function
+                Else
+                    zP1 = z1 + 1
+                End If
+        End If
+    Next
+    
+   zP1 = zP1
+    
+    'Wenn der 1 Wert gemeint ist und kein Komma gefunden
+    If (Len(strOpenArgs) > 0) And (lonPosNr = 1) Then
+        funOpenArgs = strOpenArgs
+        Exit Function
+    End If
+    'Wenn keineAuswertung zutrifft
+    funOpenArgs = ""
+        
+End Function

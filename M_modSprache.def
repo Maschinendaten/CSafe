@@ -1,0 +1,211 @@
+Option Compare Database
+Option Explicit
+Public GloLA As String
+
+
+
+
+Function LA(sText As String, Optional sTextKey As String) As String
+Dim Rs1 As DAO.Recordset
+
+'die Funktion dient zum umschalten der Sprache
+'Der sText dient gleichzeitig als Schlüssel für die Übersetzung sText muss immer der deutsche sein
+'Wenn die Sprache english ist wird der Englishe Text zurück zu geben
+
+'Wenn sTextKey einen Wert enthält ist das das Suchkriterium sTextKey der übergebene Text ist immer in deutsch
+'Wenn ein Text nicht besteht wird er angelegt
+
+'On Error GoTo Err_
+
+GloLA = funLadeReg("Sprache", "Wert", "")
+If Nz(sTextKey, "") = "" Then
+    Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_LiSprache WHERE textDE ='" & sText & "'")
+Else
+    Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_LiSprache WHERE TextKey ='" & sTextKey & "'")
+End If
+
+If Rs1.EOF Then 'Schlüssel wurde nicht gefunden
+    Rs1.AddNew
+    Rs1!TextKey = Nz(sTextKey)
+    Rs1!textDE = Nz(sText)
+    Rs1.Update
+    LA = sText
+Else
+    
+    If GloLA = "EN" Then
+        LA = Nz(Rs1!textEN)
+        If LA = "" Then LA = Nz(Rs1!textDE)
+        
+    End If
+    If GloLA = "DE" Then
+        LA = Rs1!textDE
+    End If
+    
+End If
+        
+Exit Function
+Err_:
+Resume Next
+
+End Function
+
+
+
+
+
+Sub FormSprache(Optional FormN As Object)
+'Durchsucht das Formular nach Bezeicnern die mit BE_ beginnen und ersetzt den Inhalt mit der jeweiligen Sprache
+
+'Durchsuche das Form nach Bezeichnern
+
+'Prüfe ob Bezeichner in Sprachtabelle
+
+'Ersetze durch gewünschte Sprache
+
+'Bei einem Fehle gibt die Funktion ein String zurück in dem das Feld steht das den Fehler verursacht hat
+Const dp = False
+
+Dim Datentype As String
+Dim strSp1 As String
+Dim DBAdr As String
+Dim ByteAdr As Long
+Dim BitAdr As Long
+Dim intSp1 As Long
+Dim lPr As Long
+Dim S1 As String
+
+On Error GoTo Err_
+
+    Dim frm As Form
+    Dim ctl As Control
+    
+    Set frm = Screen.ActiveForm   ' CurrentProject.AllForms(FormN) '
+    
+    For Each ctl In frm.Controls
+        'Wenn die ersten vier Buchstaben und die Länge dann
+        strSp1 = ctl.Name
+        'Debug.Print "", strSp1
+        If (strSp1 Like "BE_*") And (Len(strSp1) >= 8) Then
+            
+            
+            Datentype = Mid(strSp1, 10, 1)
+            DBAdr = Mid(strSp1, 3)
+            S1 = LA(ctl.Caption, ctl.Name)
+            ctl.Caption = S1
+            'If dp Then Debug.Print "Var: " & S1
+            'Debug.Print "Var Name: " & ctl.Name & " Type:" & Datentype & " Adr:" & DBAdr
+        End If
+    Next ctl
+    
+    'funDBin = ""
+
+ErrExit:
+    Exit Sub
+Err_:
+'    funDBin = ("Problem Nr. " & Err.Number & " " & Err.description & vbCrLf & _
+'        "Der Fehler ist aufgetreten bei :" & strSp1)
+    Resume ErrExit
+End Sub
+
+
+
+
+Public Sub SpracheUmschalten(lngSpracheID As Long)
+Dim i As Integer
+Dim db As DAO.Database
+Dim strObjekt As String
+Dim objForm As Form
+Set db = CurrentDb
+'db.Execute "DELETE FROM tblElemente"
+'db.Execute "DELETE FROM tblUebersetzungen"
+For i = 0 To CurrentProject.AllForms.count - 1
+    strObjekt = CurrentProject.AllForms(i).Name
+    'Debug.Print strObjekt
+    'Set objForm = CurrentProject.AllForms(i)
+    ObjektEinlesen strObjekt, lngSpracheID, "Formular"
+    'FormSprache '(i)
+    'ObjektEinlesen strObjekt, lngSpracheID, "Formular"
+    
+Next i
+
+'For i = 0 To CurrentProject.AllReports.count - 1
+'    strObjekt = CurrentProject.AllReports(i).Name
+'    ObjektEinlesen strObjekt, lngSpracheID, "Bericht"
+'Next i
+
+End Sub
+Public Sub UebersetzungSchreiben(lngSpracheID As Long, frm As Object, Optional ctl As Control, _
+Optional strEigenschaft As String)
+Dim db As DAO.Database
+Dim rst As DAO.Recordset
+Dim strControl As String
+Dim strBegriff As String
+Dim lngBegriffID As Long
+Dim lngSteuerelementtyp As Long
+Set db = CurrentDb
+Set rst = db.OpenRecordset("tblSprachen", dbOpenDynaset)
+lngBegriffID = Nz(DMax("BegriffID", "tblUebersetzungen"), 0) + 1
+Do While Not rst.EOF
+    If OnErRe Then On Error Resume Next
+    If Not ctl Is Nothing Then
+        strBegriff = ctl.Properties(strEigenschaft)
+        strControl = ctl.Name
+        lngSteuerelementtyp = ctl.ControlType
+    Else
+        strBegriff = frm.Properties(strEigenschaft)
+        strControl = ""
+    End If
+    If Err.Number > 0 Then Exit Sub
+    On Error GoTo 0
+    If Len(strBegriff) > 0 Then
+        If rst!SpracheID = lngSpracheID Then
+            strBegriff = strBegriff
+        Else
+            strBegriff = rst!Kuerzel & "_" & strBegriff
+        End If
+    Else
+        strBegriff = "_" & rst!Kuerzel & "_" & strControl & "_" & strEigenschaft
+    End If
+    db.Execute "INSERT INTO tblUebersetzungen(BegriffID, SpracheID, Begriff) " _
+    & "VALUES(" & lngBegriffID & ", " & rst!SpracheID & ", '" & strBegriff & "')", _
+    dbFailOnError
+    If OnErRe Then On Error Resume Next
+    db.Execute "INSERT INTO tblElemente(Objekt, Steuerelement, Steuerelementtyp, " _
+    & "BegriffID, Eigenschaft) VALUES('" & frm.Name & "', '" & strControl & "', '" _
+    & lngSteuerelementtyp & "', " & lngBegriffID & ", '" & strEigenschaft & "')", _
+    dbFailOnError
+    On Error GoTo 0
+    rst.MoveNext
+Loop
+End Sub
+
+
+Public Sub ObjektEinlesen(strObjekt As String, lngSpracheID As Long, strTyp As String)
+Dim i As Integer
+Dim strEigenschaft As String
+Dim obj As Object
+Dim ctl As Access.Control
+Dim strSp1 As String
+If strTyp = "Formular" Then
+    DoCmd.OpenForm strObjekt, acDesign ' acPreview
+    Set obj = Forms(strObjekt)
+Else
+    DoCmd.OpenReport strObjekt, acPreview
+    Set obj = Reports(strObjekt)
+End If
+
+'UebersetzungSchreiben lngSpracheID, obj, ctl, "Caption"
+For Each ctl In obj.Controls
+    'For i = 1 To 4
+    strSp1 = ctl.Name
+        'Debug.Print "", strSp1
+        If (strSp1 Like "BE_*") And (Len(strSp1) >= 8) Then
+            Debug.Print strObjekt, ctl.Name, ctl.Caption
+        End If
+'        strEigenschaft = Choose(i, "Caption", "ControlTipText", "StatusbarText", _
+'        "ValidationText")
+'        UebersetzungSchreiben lngSpracheID, obj, ctl, strEigenschaft
+    'Next i
+Next ctl
+DoCmd.Close acForm, strObjekt
+End Sub

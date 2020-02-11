@@ -1,0 +1,724 @@
+'Option Compare Database
+'Option Explicit
+'
+'Public gloAWDrucker As Long
+'Public gloAWStrBericht As String
+'
+'Public strDruckerMerken As String
+'
+'
+'
+'#If Win64 Then
+'    Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+'    '----------- Von Microsoft Text in Zwischenablage ---------------------
+'    Declare PtrSafe Function GlobalUnlock Lib "kernel32" (ByVal hMem As Long) As Long
+'    Declare PtrSafe Function GlobalLock Lib "kernel32" (ByVal hMem As Long) As Long
+'    Declare PtrSafe Function GlobalAlloc Lib "kernel32" (ByVal wFlags As Long, ByVal dwBytes As Long) As Long
+'    Declare PtrSafe Function CloseClipboard Lib "user32" () As Long
+'    Declare PtrSafe Function OpenClipboard Lib "user32" (ByVal hwnd As Long) As Long
+'    Declare PtrSafe Function EmptyClipboard Lib "user32" () As Long
+'    Declare PtrSafe Function lstrcpy Lib "kernel32" (ByVal lpString1 As Any, ByVal lpString2 As Any) As Long
+'    Declare PtrSafe Function SetClipboardData Lib "user32" (ByVal wFormat As Long, ByVal hMem As Long) As Long
+'#Else
+'        Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+'    '----------- Von Microsoft Text in Zwischenablage ---------------------
+'    Declare Function GlobalUnlock Lib "kernel32" (ByVal hMem As Long) As Long
+'    Declare Function GlobalLock Lib "kernel32" (ByVal hMem As Long) As Long
+'    Declare Function GlobalAlloc Lib "kernel32" (ByVal wFlags As Long, ByVal dwBytes As Long) As Long
+'    Declare Function CloseClipboard Lib "user32" () As Long
+'    Declare Function OpenClipboard Lib "user32" (ByVal hwnd As Long) As Long
+'    Declare Function EmptyClipboard Lib "user32" () As Long
+'    Declare Function lstrcpy Lib "kernel32" (ByVal lpString1 As Any, ByVal lpString2 As Any) As Long
+'    Declare Function SetClipboardData Lib "user32" (ByVal wFormat As Long, ByVal hMem As Long) As Long
+'
+'#End If
+'
+'
+'Public Const GHND = &H42
+'Public Const CF_TEXT = 1
+'Public Const MAXSIZE = 4096
+'
+'
+''**************************************
+''Windows API/Global Declarations for :Cr
+''     eate PDF from MS Access Report
+''**************************************
+'
+'
+'Declare Function RegEnumValue Lib "advapi32.dll" Alias "RegEnumValueA" (ByVal hKey As Long, ByVal dwIndex As Long, ByVal lpValueName As String, lpcbValueName As Long, ByVal lpReserved As Long, lpType As Long, ByVal lpData As String, lpcbData As Long) As Long
+'Declare Function RegOpenKeyEx Lib "advapi32" Alias "RegOpenKeyExA" (ByVal hKey As Long, ByVal lpSubKey As String, ByVal ulOptions As Long, ByVal samDesired As Long, phkResult As Long) As Long
+'Declare Function RegSetValueEx Lib "advapi32" Alias "RegSetValueExA" (ByVal hKey As Long, ByVal lpValueName As String, ByVal Reserved As Long, ByVal dwType As Long, ByVal szData As String, ByVal cbData As Long) As Long
+'Declare Function RegCloseKey Lib "advapi32" (ByVal hKey As Long) As Long
+'Declare Function RegCreateKeyEx Lib "advapi32" Alias "RegCreateKeyExA" (ByVal hKey As Long, ByVal lpSubKey As String, ByVal Reserved As Long, ByVal lpClass As String, ByVal dwOptions As Long, ByVal samDesired As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, phkResult As Long, lpdwDisposition As Long) As Long
+'    #If Win32 Then
+'        Public Const HKEY_CLASSES_ROOT = &H80000000
+'        Public Const HKEY_CURRENT_USER = &H80000001
+'        Public Const HKEY_LOCAL_MACHINE = &H80000002
+'        Public Const HKEY_USERS = &H80000003
+'        Public Const KEY_ALL_ACCESS = &H3F
+'        Public Const REG_OPTION_NON_VOLATILE = 0&
+'        Public Const REG_CREATED_NEW_KEY = &H1
+'        Public Const REG_OPENED_EXISTING_KEY = &H2
+'        Public Const ERROR_SUCCESS = 0&
+'        Public Const REG_SZ = (1)
+'    #End If
+'Type SECURITY_ATTRIBUTES
+'    nLength As Long
+'    lpSecurityDescriptor As Long
+'    bInheritHandle As Boolean
+'    End Type
+''**************************************
+'' Name: Create PDF from MS Access Report
+''
+'' Description:On a machine where the Ado
+''     be PDFWriter is installed, the current p
+''     rinter is swapped out with the PDFWriter
+''     and the PDF file is created. The origina
+''     l printer is then restored.
+'' By: Todd Benson
+''
+''
+'' Inputs:rptName = Microsoft Access repo
+''     rt name you want to create pdf from. sPD
+''     FPath = the directory path where you wan
+''     t to create the pdf file (ex. - "c:\data
+''     \"). sPDFName = the name of the pdf file
+''     you are wanting to create (ex. - "file00
+''     1.pdf").
+''
+'' Returns:None
+''
+''Assumes:This code is easily modified to
+''     be used in other programs
+''
+''Side Effects:Please use the most recent
+''     installs of Adobe Exchange or PDFWriter
+''     to ensure proper functionality.
+''This code is copyrighted and has limite
+''     d warranties.
+''Please see http://www.Planet-Source-Cod
+''     e.com/xq/ASP/txtCodeId.35321/lngWId.1/qx
+''     /vb/scripts/ShowCode.htm
+''for details.
+''**************************************
+'
+'#Const gloOutlookEin = 0    'Wenn 1 wird bei der Kompilierung Otlook mit eingebunden
+'                            'Es muss unter extras Verweise MS Outlook eingebunden sein
+'
+'Public Function bGetRegValue(ByVal hKey As Long, ByVal sKey As String, ByVal sSubKey As String) As String
+'    Dim lResult As Long
+'    Dim phkResult As Long
+'    Dim dwReserved As Long
+'    Dim szBuffer As String
+'    Dim lBuffSize As Long
+'    Dim szBuffer2 As String
+'    Dim lBuffSize2 As Long
+'    Dim lIndex As Long
+'    Dim LType As Long
+'    Dim sCompKey As String
+'    Dim bFound As Boolean
+'    lIndex = 0
+'    lResult = RegOpenKeyEx(hKey, sKey, 0, 1, phkResult)
+'
+'
+'    Do While lResult = ERROR_SUCCESS And Not (bFound)
+'        szBuffer = Space(255)
+'        lBuffSize = Len(szBuffer)
+'        szBuffer2 = Space(255)
+'        lBuffSize2 = Len(szBuffer2)
+'        lResult = RegEnumValue(phkResult, lIndex, szBuffer, lBuffSize, dwReserved, LType, szBuffer2, lBuffSize2)
+'
+'
+'        If (lResult = ERROR_SUCCESS) Then
+'            sCompKey = Left(szBuffer, lBuffSize)
+'
+'
+'            If (sCompKey = sSubKey) Then
+'                bGetRegValue = Left(szBuffer2, lBuffSize2 - 1)
+'                RegCloseKey phkResult
+'                Exit Function
+'            End If
+'        End If
+'        lIndex = lIndex + 1
+'    Loop
+'    RegCloseKey phkResult
+'End Function
+'
+'
+'Public Function bSetRegValue(ByVal hKey As Long, ByVal lpszSubKey As String, ByVal sSetValue As String, ByVal sValue As String) As Boolean
+'    If OnErRe Then On Error Resume Next
+'    Dim phkResult As Long
+'    Dim lResult As Long
+'    Dim SA As SECURITY_ATTRIBUTES
+'    Dim lCreate As Long
+'    RegCreateKeyEx hKey, lpszSubKey, 0, "", REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, SA, phkResult, lCreate
+'    lResult = RegSetValueEx(phkResult, sSetValue, 0, REG_SZ, sValue, CLng(Len(sValue) + 1))
+'    RegCloseKey phkResult
+'    bSetRegValue = (lResult = ERROR_SUCCESS)
+'End Function
+'
+'
+'Public Function RunReportAsPDF(RptName As String, sPDFPath As String, sPDFName As String)
+'    '---------------------------------
+'    'rptName = Microsoft Access report name
+'    '     you
+'    'want to create pdf from
+'    'sPDFPath = the directory path where you
+'    '     want
+'    'to create the pdf file (ex. - "c:\data\
+'    '     ")
+'    'sPDFName = the name of the pdf file you
+'    '     are
+'    'wanting to create (ex. - "file001.pdf")
+'    '
+'    '---------------------------------
+'    Dim sMyDefPrinter As String
+'    On Error GoTo Err_
+'    'Save current default printer
+'    sMyDefPrinter = bGetRegValue(HKEY_CURRENT_USER, "Software\Microsoft\WIndows NT\CurrentVersion\Windows", "Device")
+'    ' Set default printer to PDF Writer
+'    bSetRegValue HKEY_CURRENT_USER, "Software\Microsoft\Windows NT\CurrentVersion\Windows", "Device", "Acrobat PDFWriter"
+'    'Setting value for PDFFileName in the re
+'    '     gistry stops file dialog box from appear
+'    '     ing
+'    bSetRegValue HKEY_CURRENT_USER, "Software\Adobe\Acrobat PDFWriter", "PDFFileName", sPDFPath + sPDFName
+'    'Run the report
+'
+'
+'    DoCmd.OpenReport RptName, acViewNormal
+'Exit_:
+'        ' Restore default printer
+'        bSetRegValue HKEY_CURRENT_USER, "Software\Microsoft\WIndows NT\CurrentVersion\Windows", "Device", sMyDefPrinter
+'        Exit Function
+'Exit Function
+'Err_:
+'MsgErr "RunReportAsPDF", "modDrucken", Err.description, Err.Number, Erl()
+'Resume Exit_
+'End Function
+'
+''Orginal Bezeichnung Function ClipBoard_SetData(MyString As String)
+'
+'Function funCopyInZwischenablage(MyString As String)
+'   Dim hGlobalMemory As Long, lpGlobalMemory As Long
+'   Dim hClipMemory As Long, x As Long
+'
+'   ' Allocate moveable global memory.
+'   '-------------------------------------------
+'   hGlobalMemory = GlobalAlloc(GHND, Len(MyString) + 1)
+'
+'   ' Lock the block to get a far pointer
+'   ' to this memory.
+'   lpGlobalMemory = GlobalLock(hGlobalMemory)
+'
+'   ' Copy the string to this global memory.
+'   lpGlobalMemory = lstrcpy(lpGlobalMemory, MyString)
+'
+'   ' Unlock the memory.
+'   If GlobalUnlock(hGlobalMemory) <> 0 Then
+'      MsgBox "Could not unlock memory location. Copy aborted."
+'      GoTo OutOfHere2
+'   End If
+'
+'   ' Open the Clipboard to copy data to.
+'   If OpenClipboard(0&) = 0 Then
+'      MsgBox "Could not open the Clipboard. Copy aborted."
+'      Exit Function
+'   End If
+'
+'   ' Clear the Clipboard.
+'   x = EmptyClipboard()
+'
+'   ' Copy the data to the Clipboard.
+'   hClipMemory = SetClipboardData(CF_TEXT, hGlobalMemory)
+'
+'OutOfHere2:
+'
+'   If CloseClipboard() = 0 Then
+'      MsgBox "Could not close Clipboard."
+'   End If
+'
+'   End Function
+'
+'
+'
+'
+'
+'Function funDruckerWechseln(strneuerDrucker As String) As String
+''drucker auflisten
+'Dim prtLoop As Printer
+'Dim strSp As String
+'Dim strDruckername As String
+'Dim BolOk As Boolean
+'Dim Rs1 As DAO.Recordset
+'
+'If strneuerDrucker = "" Then
+'    funDruckerWechseln = "Der gewählte Drucker ist nicht zugewiesen."
+'    Exit Function
+'End If
+'
+''Markierten Datensatz aus Tabelle lesen und zuweisen
+'Set Rs1 = CurrentDbC.OpenRecordset("SELECT tblIni.* " & _
+'                                  "FROM tblIni " & _
+'        "WHERE (tblIni.Kennung like '" & strneuerDrucker & "');")
+'
+'If Rs1.RecordCount <> 0 Then
+'    strDruckername = Rs1!Wert2
+'    Rs1.Close
+'    Set Rs1 = Nothing
+'Else
+'    funDruckerWechseln = "Der Drucker ist nicht Datenbank."
+'    Exit Function
+'    Rs1.Close
+'    Set Rs1 = Nothing
+'End If
+'
+'For Each prtLoop In Application.Printers
+'    With prtLoop
+'        strSp = .DeviceName
+'        If strSp = strDruckername Then BolOk = True
+'    End With
+'Next prtLoop
+'
+'If Not BolOk Then
+'    funDruckerWechseln = "Der gewählte Drucker ist auf Ihrem System nicht installiert."
+'    Exit Function
+'End If
+'
+'' Aktuellen Standard Drucker merken
+'strDruckerMerken = Application.Printer.DeviceName
+'
+''Neuen Drucker setzen (Name aus Systemsteuerung Drucker)
+'Application.Printer = Application.Printers(strDruckername)
+'
+''Drucken des Forms auf den Application Standarddrucker
+'''
+'
+'End Function
+'
+'Function funDruckerVorher() As String
+'
+'
+'
+'On Error GoTo Err_
+'If Nz(strDruckerMerken) = "" Then
+'    funDruckerVorher = "Zum alten Drucker kann nicht gewechselt werden!"
+'    MsgBox (funDruckerVorher)
+'    Exit Function
+'End If
+'
+''Alten Standard Drucker einstellen
+'Application.Printer = Application.Printers(strDruckerMerken)
+'
+'
+'Exit Function
+'
+'Exit_:
+'Exit Function
+'Err_:
+'MsgErr "funDruckerVorher", "modDrucken", Err.description, Err.Number, Erl()
+'Resume Exit_
+'End Function
+'
+''Email an Kontakt senden
+''leicht abgewandelte Kopie aus der MS Auto97.hlp
+''Microsoft otlook 10.0 Objektlibary
+'
+'Function funSendEMail(strEMailEmpfaenger As String, _
+'                        strBetreff As String, _
+'                        strAnrede As String, _
+'                        strText As String, _
+'                        strAnhang As String, _
+'                        lonNrBenutzer As Long)
+'
+''Beep
+'
+'#If gloOutlookEin = 1 Then ' Bedingte kompilierung
+'
+'Dim Sp1 As String
+'Dim objOutlook As Object 'Outlook.Application
+'Dim objOutlookMsg As Object 'Outlook.MailItem
+'Dim objOutlookRecip As Object 'Outlook.Recipient
+'Dim objOutlookAttach As Object 'Outlook.Attachment
+'Dim Rs1 As DAO.Recordset
+''Variablen für die Übergabe
+'Dim varEmpf    'An:
+'Dim varCC      'CC:
+'Dim varBCC     'BCC:
+'Dim varNachricht
+'Dim varATT     'Dateipfad zum Attachment
+'Dim strSchlusstext As String
+'
+''On Error GoTo Err_
+'
+''Änderung 14.1.2006 Late binding für Otlook
+''Set objOutlook = CreateObject("Outlook.Application")
+'
+'
+'If Nz(strAnhang) = "" Then 'Hier könnte der Dateinamen des Anhangs ausgewertet werden
+'    strAnhang = ""
+'End If
+''Der dem Benutzer zugeordnete Schlusstext wir ausgelesen
+'Set Rs1 = CurrentDbC.OpenRecordset("SELECT tblAdressenPersonal.AdressNr, tblAdressenPersonal.BriefAnhang " & _
+'    "FROM tblAdressenPersonal " & _
+'    "WHERE (((tblAdressenPersonal.AdressNr)= " & lonNrBenutzer & "));")
+'    If Rs1.RecordCount <> 0 Then
+'        strSchlusstext = Nz(Rs1!BriefAnhang)
+'    End If
+'    Rs1.Close
+'    Set Rs1 = Nothing
+'
+''Es wird der Text generiert Anrede untersucht
+'        Sp1 = strText & strSchlusstext
+'
+'    'Die beiden Werden zugewisen
+'    gloStrEMailAn = ""
+'    gloStrEMailCC = ""
+''Empfanger zuweisen
+'    If Nz(strEMailEmpfaenger) = "" Then
+'        DoCmd.OpenForm "NaviEMail", , , , , acDialog, strEMailEmpfaenger
+'        strEMailEmpfaenger = gloStrEMailAn
+'    Else
+'        gloStrEMailAn = strEMailEmpfaenger
+'        If msgJaNein("Sie haben als E-Mail Empfänger die Adresse " & vbCrLf & "'" & strEMailEmpfaenger & "'" & vbCrLf & "angegeben wollen Sie diese ergänzen oder ändern?") Then
+'        DoCmd.OpenForm "NaviEMail", , , , , acDialog, strEMailEmpfaenger
+'        strEMailEmpfaenger = gloStrEMailAn
+'        End If
+'    End If
+'    varEmpf = gloStrEMailAn
+'    varCC = gloStrEMailCC
+'    varBCC = ""
+'    'varBetreff = "GF " + Me!BelegArt + "-" + Me!Belegbezeichnung + " " + Me!Betreff
+'    varNachricht = Sp1
+'    'Hier entscheiden Sie zwischen fest codiert und Pfadübergabe
+'    'varATT = Me!Kopftext  'Pfad-Übergabe
+'    varATT = strAnhang 'Anhang
+'    ' Create the Outlook session.
+'    Set objOutlook = CreateObject("Outlook.Application")
+'    ' Create the message.
+'    Set objOutlookMsg = objOutlook.CreateItem(0)  '(olMailItem)
+'    With objOutlookMsg
+'        'Die Variablen: olTo, olCC, olBCC wurden oben festgelegt!
+'         ' Add the To recipient(s) to the message.
+'         Set objOutlookRecip = .Recipients.Add(varEmpf)
+'          objOutlookRecip.type = 1  'olTo
+'         ' Add the CC recipient(s) to the message.
+'         If varCC <> "" Then
+'            Set objOutlookRecip = .Recipients.Add(varCC)
+'            objOutlookRecip.type = 2 'olCC
+'         End If
+'        ' Add the BCC recipient(s) to the message.
+''         Set objOutlookRecip = .Recipients.Add(varBCC)
+''         objOutlookRecip.Type = 3 'olBCC
+'        ' Set the Subject, Body, and Importance of the message.
+'        .Subject = strBetreff
+'        .Body = varNachricht      'Nur Text
+'        '.HTMLBody = Nachricht   'HTML-Format
+'        .Categories = "Info"
+'        'Abstimmungs-Schaltflächen
+'        '.VotingOptions = "Stimme zu!;Lehne ab!; Ist mir Wurscht!"
+'        '.Importance = olImportanceHigh  'Dringlichkeit: Hoch
+'        ' Ein Attachment zur Mail hinzufügen.
+'        If Len(Trim(Nz([varATT]))) <> 0 Then 'Falls gar nichts ausgewählt
+'          If strText <> "(Keine)" Then    'Falls File-Dialog abgebrochen gibt er (Keine) zurück.
+'            Set objOutlookAttach = .Attachments.Add(varATT)
+'          End If
+'        End If
+'        ' Empfängernamen überprüfen.
+'        For Each objOutlookRecip In .Recipients
+'            objOutlookRecip.Resolve
+'        Next
+'        ' Nachricht vor dem Senden anzeigen?
+'        .display
+'        '.Send
+'    'Jetzt löschen wir den Inhalt des Datei-Anhang Feldes (ATT_Pfad)
+'    'damit wieder mit leerem Feld begonnen wird.
+'    'Me.ATT_Pfad.Value = ""
+'  End With
+'
+'Exit Function
+''Fehler Behandlung
+'
+'Err_:
+'    If Err.Number = -2113732605 Then
+'       If modAbfrage("Otlook muss geöffnet sein." & vbCrLf & "Wollen Sie Otlook öffnen?") Then
+'         Shell "C:\Programme\Microsoft Office\Office10\OUTLOOK.EXE /recycle", vbMinimizedNoFocus
+'         Exit Function
+'       Else
+'         Exit Function
+'       End If
+'    End If
+'    MsgErr "modDruck", "funSendEMail", Err.description, Err.Number, Erl()
+'
+'#End If  ' Ender der Bedingten kompilierung
+'
+'End Function
+'
+'
+'
+'Public Function funDruck(frmForm As Form, strBerichtVorgabe As String)
+''Druckt die Berichte auf den verschiedenen Geräten
+''1) direkt drucken Standarddrucker
+''2) als Voransicht
+''3) als PDF`
+''4) als E-Mail
+''5) als Fax
+''6) an Drucker Nr2
+'
+'Dim strSp1 As String
+'Dim strSp2 As String
+'Dim strBericht As String
+'
+'Dim bolret As Boolean
+'Dim strMeldung As String
+'Dim lonNr As Long
+'Dim bolHupf As Boolean
+'
+''Wenn kein Betreff eigegeben wurde gibt es einen Alarm
+''On Error GoTo Err_
+'
+'    'löschen damit wenn Funktion nochmal aufgerufen wird nicht der Alte Bericht gewählt wird
+'    gloAWStrBericht = ""
+'    'Änderung am 10.11.2006 Möglichkeit verschiedene Berichte aus zu wählen
+'    'Änderung immer mit * auswählen dann könne alle viele Berichte angucken 8.12.2006
+'
+'
+'    'DoCmd.OpenForm "f_drucken", , , , , , strBerichtVorgabe & "*"
+'
+'
+'    DoCmd.OpenForm "f_drucken", , , , , acDialog, strBerichtVorgabe & "*"
+'
+'    lonNr = gloAWDrucker
+'    'Wenn der Globalen Variablen ein Bericht zugewiesen wurde wird dieser ausgewählt
+'    'Diese Funktion ermöglicht über das FRMDrucken mehrer Berichte zu zu weisen
+'    If Nz(gloAWStrBericht) <> "" Then
+'        strBericht = gloAWStrBericht
+'    Else
+'        strBericht = strBerichtVorgabe
+'    End If
+'
+'    'Wenn keine Auswahl getroffen wurde Funktion beenden
+'    If Nz(lonNr) = 0 Then Exit Function
+'
+''    If (frmForm.Betreff = "") Or IsNull(frmForm.Betreff) Then
+''        If bolHupf = False Then
+''            MsgBox ("Bitte geben Sie einen Betreff ein um den Beleg leichter zu finden!")
+''            Exit Function
+''        End If
+''    End If
+'    Screen.MousePointer = 0
+'    If bolHupf = True Then GoTo Hupf1
+'    'Das Datum wir vor dem öffnen des Berichtes in die Datenfelder geschrieben
+''    If IsNull(frmForm.Erstelldatum) Then frmForm.Erstelldatum = Date
+''    If IsNull(frmForm.Wiedervorlagedatum) Then frmForm.Wiedervorlagedatum = frmForm.Erstelldatum + 10
+'    'vor dem Öffnen die Daten nochmals Aktualisieren
+'  '  frmForm.Refresh
+'    'funChangeProDir (frmForm!Projektnummer)
+'   ' strSp1 = frmForm.BelegArt & frmForm!Belegbezeichnung & "-" & "-" & Format(Now, "yyMMdd")
+'    'Kopiert Bezeichnung in die Zwischenablage für den Ausdruck als PDF
+'    funCopyInZwischenablage (strSp1)
+'    'gloLonBelegNr = Val(Nz(frmForm.BelegNr))
+'
+'    'If gloLonBelegNr = 0 Then Exit Function
+'    Screen.MousePointer = 0
+'Hupf1:
+''    If bolHupf = True Then strSp1 = "Ausdruck-" & Format(Now, "YYMMDD hhnnss")
+''    strSp2 = funDirPDF & "\" & strSp1 & ".pdf"
+'
+'    Select Case lonNr
+'        Case 1 'Direkt am Standarddrucker
+'            DoCmd.OpenReport strBericht, acViewNormal, , , acDialog, strSp1
+'        Case 2 'Als Voransicht
+'            DoCmd.OpenReport strBericht, acViewPreview, , , acDialog, strSp1
+'        Case 3 'Als PDF
+'                'Speichern auf Temporären Verzeichnis
+'                'bolret = ConvertReportToPDF(strBericht, _
+'                'vbNullString, strSp2, False, True, 0, "", "", 0, 0)
+'        Case 4 'als E-Mail
+'                'Speichern in Temp Verzeichnis
+''                bolret = ConvertReportToPDF(strBericht, _
+''                vbNullString, strSp2, False, False, 0, "", "", 0, 0)
+''                'E-Mail senden
+''                strMeldung = funSendEMail(Nz(frmForm.[E-Mail]), strSp1, frmForm.Anrede & " " & frmForm.Vorname & " " & frmForm.Nachname, Nz(frmForm.Textstück), strSp2, funBenutzerNr())
+'
+'        Case 5 'als Fax
+'
+'
+'        Case 6 'Drucker Nr 2
+'
+'        Case 7 'Drucker HTML
+'                'subHTML ("a_","HTML")
+'                funHTML "a_html01", "index01"
+'
+'        Case 10 'in der Entwurfsansicht öffnen
+'                DoCmd.OpenReport strBericht, acViewPreview
+'
+'
+'        Case Else
+'            Exit Function
+'    End Select
+'
+'Exit_:
+'
+'Screen.MousePointer = 0
+'Exit Function
+'Err_:
+'If Err.Number = 2467 Or Err.Number = 2465 Then
+'    bolHupf = True
+'    Resume Next
+'End If
+'
+'MsgErr "SubDrucken", "Form_frmDrucken", Err.description, Err.Number, Erl()
+'Resume Exit_
+'End Function
+'
+'
+'Function funHTML(sAbfrage As String, sHtml As String)
+''Die funktion liest eine bestehende HTML Datei ein.
+''In der Datei befinden sich Platzhalter ?# = Anfang dann kommt der Name der der Variablen entspricht dann #? als Endzeichen
+''Die Platzhalter werden durch Daten ersetzt wenn das Feld nicht gefunden wird wird xxx an die Variable angehängt
+''Die Datei wird wieder als HTML ausgegeben und dann aufgerufen
+''MG 9.10.2011 gestartet auf der AEK
+'
+''Test Aufruf: funhtml "a_html01","index01"
+'
+'Dim Rs1 As DAO.Recordset
+'Dim SQL As String
+'Dim S1 As String
+'Dim S2 As String
+'Dim sPlatz As String
+'Dim Zeile As String
+'Dim a, b As Long
+'Dim L1 As Long
+'Dim L2 As Long
+'Dim PFix As String
+'Dim datName As String
+'
+'datName = CurrentProject.Path & "\html\" & sHtml & ".htm"
+'
+''HTML Datei einlesen
+'Open datName For Input As #1
+'While Not EOF(1#)        ' bis Dateiende
+'    Line Input #1, Zeile ' Eine Zeile einlesen
+'    S1 = S1 & Zeile & vbCrLf
+'Wend
+'Close #1
+'
+''durchsuche HTML und ersetze Platzhalter ?# = Anfang (dann Variable) #?=Ende
+''Beim Platzhalter für Bilder muss +BiH0000W0000B0xxxxxName stehen die Bilder weden aus dem Verzeichnis Bilder generiert
+''H ist die Höhe W ist die Breite B ist Border xx ist frei Ab Zeichen 21 steht der Dateiname
+'
+'a = 0
+'b = 1
+'While a < Len(S1)
+'    a = a + 1
+'    L1 = InStr(a, S1, "?#")
+'    If L1 <> 0 Then 'Ein Zeichen wurde gefunden
+'        a = L1
+'        L2 = InStr(a, S1, "#?")
+'        If L2 <> 0 Then
+'            'Jetzt gehts los Ende und Anfang gefunden
+'            sPlatz = Mid(S1, L1 + 2, L2 - L1 - 2) 'Schneidet den String aus
+'            sPlatz = funPlatzhalterAusAbfrage("a_html01", sPlatz) 'Sucht den Wert fürd das Feld
+'            'If DebugOn Then Debug.Print sPlatz
+'            Select Case Left(sPlatz, 3)
+'                Case "+Bi" 'Ausgabe Link für Bild
+'                    'sPlatz = funPlatzhalterAusAbfrage("a_html01", Mid(sPlatz, 21))
+'                    S2 = S2 & Mid(S1, b, L1 - b) & funBildOut("a_html01", sPlatz)
+'                    b = L2 + 2
+'                Case Else
+'
+'                    S2 = S2 & Mid(S1, b, L1 - b) & sPlatz
+'                    b = L2 + 2
+'            End Select
+'
+'        Else
+'            'Kein Ende-Platzhalter gefunden ende
+'            a = Len(S1)
+'            S2 = S2 & Mid(S1, b, a - b)
+'        End If
+'    Else
+'        'Kein Anfangs-Platzhalter gefunden ende
+'        a = Len(S1)
+'        S2 = S2 & Mid(S1, b, a - b)
+'    End If
+'
+''Suche das Datenfeld im geöffneten Datensat
+'
+'
+'
+'Wend 'Ende Durchsuche HTML
+'
+'
+''abspeichern der HTML Datei
+'datName = CurrentProject.Path & "\html\" & sHtml & "_Out.htm"
+'Open datName For Output As #1
+'    Print #1, S2
+'Close #1
+'
+'Application.FollowHyperlink datName, , True
+'
+'End Function
+'
+'
+'Function funPlatzhalterAusAbfrage(sAbfrage As String, sWert As String) As String
+'
+''Test Aufruf: funPlatzhalterAusAbfrage "a_html01","Sort_"
+'
+'Dim Rs1 As DAO.Recordset
+'Dim Field_ As DAO.Field
+'Dim S1 As String
+'Dim sPFix As String
+''Abfrage einlesen
+'
+'Set Rs1 = CurrentDb.OpenRecordset(sAbfrage)
+'
+'funPlatzhalterAusAbfrage = sWert
+'
+'If Left(sWert, 3) = "+Bi" Then
+'    sPFix = Left(sWert, 19)
+'    sWert = Mid(sWert, 20)
+'End If
+'
+'For Each Field_ In Rs1.Fields
+'    S1 = Field_.Name
+'    'Debug.Print s1
+'    If S1 = sWert Then 'Variable gefunden Wert zuweisen
+'        funPlatzhalterAusAbfrage = sPFix & Nz(Rs1(S1))
+'    End If
+'Next
+'
+'Rs1.Close
+'Set Rs1 = Nothing
+'
+'End Function
+'
+'Function funBildOut(sAbfrage As String, sWert) As String
+''                                          1         2
+''                                 1234567890123456789012345
+''Beim Platzhalter für Bilder muss +BiH0000W0000B0xxxxxName stehen die Bilder weden aus dem Verzeichnis Bilder generiert
+''H ist die Höhe W ist die Breite B ist Border xx ist frei Ab Zeichen 21 steht der Dateiname
+'
+''TESTSTRING : funBildOut("+BiH0000W0000B0xxxxxName")
+'Dim a As String
+'Dim S1 As String
+'Dim datName As String
+'
+'funBildOut = "KeinBild"
+'
+'
+'a = Chr(34)
+'
+'
+'datName = funPlatzhalterAusAbfrage(sAbfrage, Mid(sWert, 20))
+'
+'datName = CurrentProject.Path & "\Bilder\" & datName
+'
+'S1 = "<img border=" & a & Mid(sWert, 15, 1) & a & " "
+'S1 = S1 & "src=" & a & datName & a & " "
+'S1 = S1 & "width=" & a & Mid(sWert, 10, 4) & a & " "
+'S1 = S1 & "Height =" & a & Mid(sWert, 5, 4) & a & " > """
+'
+'funBildOut = S1
+'
+'End Function
+'

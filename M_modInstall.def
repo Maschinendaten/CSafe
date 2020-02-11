@@ -1,0 +1,165 @@
+Option Compare Database
+Option Explicit
+
+'Dieses Modul soll die Installation der Software aus sich selbst ermöglichen.
+'Die Daten müssen in der Lokal gespeicherten Tabelle t_Install stehen
+
+'Das speicher der Daten erledigt man komfortabel über das Form f_install
+
+
+Function funInstallCheck() As Long
+Dim Rs1 As DAO.Recordset
+Dim OK As Boolean
+Dim Sd As String
+Dim sDir As String
+Dim sAbbr As String
+
+'MG/2014.06.25  prüft ob die Software installiert ist
+'Dies wird dadurch festgestellt das die Dateien und Verzeichnise abgefragt werden
+'Diese haben in dem Feld InBefehl immer check... stehen
+'funInstallCheck = 1 (Keine Installationdateien vorhanden betr. die Anlagen )  =2 (Installation ist nicht vorhanden) =(3 Installation ist vorhanden)
+
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_install WHERE inBefehl like 'check*' ORDER BY InId;")
+
+If Rs1.EOF Then
+    funInstallCheck = 1
+    Exit Function
+End If
+
+Sd = CurrentProject.Path
+
+
+While Not Rs1.EOF
+    Select Case Rs1!InBefehl
+        Case "check" 'Prüft ob Datei vorhanden
+            If Dir(Sd & "\" & Nz(Rs1!InDir) & Nz(Rs1!InDatName)) = "" Then
+                OK = False
+                sAbbr = Sd & "\" & Nz(Rs1!InDir) & Nz(Rs1!InDatName) & " fehlt!"
+            Else
+                OK = True
+            End If
+        
+        Case "checkDir"
+            If Dir(Sd & "\" & Nz(Rs1!InDir) & Rs1!InDatName, vbDirectory) = "" Then
+                OK = False
+                sAbbr = Sd & "\" & Nz(Rs1!InDir) & Nz(Rs1!InDatName) & " fehlt!"
+            Else
+                OK = True
+            End If
+        
+    End Select
+    Rs1.MoveNext
+    If OK = False Then GoTo Ende_:
+Wend
+
+funInstallCheck = 3
+Exit Function
+
+Ende_:
+
+funInstallCheck = 2
+
+End Function
+
+
+Function funInstall() As String
+'MG/2014.06.25 Installiert die in der Tabelle t_Install gespeichert sind
+'Es stehen unter dem Feld InBefehl Befehle die ausgeführt werden
+'Check kann ausgeblendet werden da dies nur zu installieren notwendig ist
+
+Dim Rs1 As DAO.Recordset
+Dim Rs1a As DAO.Recordset2
+Dim Fld2 As DAO.Field2
+Dim OK As Boolean
+Dim Sd As String
+Dim sDir As String
+Dim S1 As String
+Dim sAbbr As String
+  Dim fld As DAO.Field2
+
+
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_install WHERE inBefehl not like 'check*' ORDER BY InId;")
+
+If Rs1.EOF Then
+    funInstall = "1 Keine Daten"
+    Exit Function
+End If
+
+Sd = CurrentProject.Path
+
+
+While Not Rs1.EOF
+    Select Case Rs1!InBefehl
+        Case "copy" 'Copiert die Datei in das entsprechende Verzeichnis
+            'Set Rld1 = Rs1.Fields("inAnlage")
+            Set Fld2 = Rs1("inAnlage")
+            Set Rs1a = Fld2.Value
+            Do While Not Rs1a.EOF 'Wird so oft durchlaufen wie es Dateien gibt
+                S1 = Sd & "\" & Nz(Rs1!InDir)
+                If (Dir(S1, vbDirectory) = "") And (Nz(Rs1!InDir) <> "") Then
+                    'Verzeichnis besteht nicht und wird angelegt
+                    S1 = Left(S1, Len(S1) - 1)
+                    MkDir (S1)
+                End If
+                'Debug.Print Rs1a("FileName")
+                S1 = CurrentProject.Path & "\" & Nz(Rs1!InDir) & Rs1a("FileName")
+                 If Dir(S1) = "" Then 'prüft ob Datei vorhanden
+                    Rs1a("FileData").SaveToFile S1      'Speichert die Datei
+                    'Debug.Print S1
+                 End If
+                Rs1a.MoveNext
+            Loop
+        Case "mkDir"  'erzeugt ein Verzeichnis neu
+            S1 = Sd & "\" & Nz(Rs1!InDir)
+            If (Dir(S1, vbDirectory) = "") And (Nz(Rs1!InDir) <> "") Then
+                'Verzeichnis besteht nicht und wird angelegt
+                S1 = Left(S1, Len(S1) - 1)
+                MkDir (S1)
+            End If
+            
+        Case "run"  'Startet eine Datei
+        
+        Case "wait" 'Wartet eine bestimmte Zeit
+        
+        Case "waitDat" 'Wartet bis eine datei erzeugt
+        
+        Case "CopyRen" 'Kopiert und löscht das letzte Zeichen im Sufix des Dateinamens so könnne auch EXE Dateien im Blob stehen
+                     'Set Rld1 = Rs1.Fields("inAnlage")
+            Set Fld2 = Rs1("inAnlage")
+            Set Rs1a = Fld2.Value
+            Do While Not Rs1a.EOF 'Wird so oft durchlaufen wie es Dateien gibt
+                S1 = Sd & "\" & Nz(Rs1!InDir)
+                If (Dir(S1, vbDirectory) = "") And (Nz(Rs1!InDir) <> "") Then
+                    'Verzeichnis besteht nicht und wird angelegt
+                    S1 = Left(S1, Len(S1) - 1)
+                    MkDir (S1)
+                End If
+                'Debug.Print Rs1a("FileName")
+                S1 = CurrentProject.Path & "\" & Nz(Rs1!InDir) & Rs1a("FileName")
+                 
+                 If Dir(S1) = "" Then 'prüft ob Datei vorhanden
+                    Rs1a("FileData").SaveToFile S1      'Speichert die Datei
+                    FileCopy S1, Left(S1, Len(S1) - 1) 'Muss nochmal kopiert werden sonst funzt exe nicht
+                    'Debug.Print S1
+                 End If
+                Rs1a.MoveNext
+            Loop
+
+    End Select
+    Rs1.MoveNext 'Alle Zeilen der Tabelle durchlaufen
+    'If ok = False Then GoTo Ende_:
+Wend
+
+'funInstall 3
+Exit Function
+
+Ende_:
+
+'funInstallCheck = "2 " & sAbbr
+
+
+
+
+
+
+End Function

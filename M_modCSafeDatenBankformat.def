@@ -1,0 +1,141 @@
+Option Compare Database
+Option Explicit
+
+
+
+
+Public Function CSafeDateiformat(sDatei As String) As Boolean
+'Die funktion prüft die Datei Ob CSafe
+'Dann werden die Felder ergänzt die notwendig sind
+
+Dim dbs As DAO.Database
+Dim dbf As DAO.Recordset
+Dim Rs1 As DAO.Recordset
+Dim S1 As String
+Dim sSql As String
+    ' Modify this line to include the path to Northwind
+    ' on your computer.
+ 
+ 'Neu Tabbelle
+' tDA_Betriebsarten
+' BaDID      Autowert        Key
+' BaDfiGu    Zahl            Replikations-ID
+' BaDfiBaiD  zahl            Long Integer
+' BaDBez     Kurzer          Text 255
+' BaDBezKurz Kurzer          Text 255
+ 
+' tDA_MRL
+' MRID              Autowert        Key
+' MRfiLiMRL         Kurzer Text                      Verweis auf die Maschinenrichtlinie
+' MRVersion         Kurzer Text                      Die Version der Maschinenrichtlinie
+' MRfiCSafe         Zahl
+' MRfiExt_Dok       Kurzer Text                     Verweis auf das Dokument
+' MRfiExt_Seite     Kurzer Text
+' MRExtBem          Langer Text
+ 
+'Tabellen Ergänzen
+' tDA_Projekte
+' ProNr KurzerText
+
+'tDA_Analys
+'RisikoPersonen     Zahl Long Integer
+'RestRisikoPersonen Zahl Long Integer
+
+If OnErRe Then On Error Resume Next
+
+'Set rs1 = CurrentDb.OpenRecordset("SELECT BaDfiGu FROM tDA_Betriebsarten")
+'
+'Debug.Print rs1.Fields(0)
+
+S1 = sDatei  'CurrentProject.Path & "\Da01\" & "CS_Test.accdb"
+    Set dbs = OpenDatabase(S1)
+    Set dbf = dbs.OpenRecordset("SELECT * FROM tDA_Analyse")
+ 
+ 'Beschreibung auslesen
+ If dbf.Properties("Description") <> "** Daten durch den Benutzer" Then
+    MsgBox ("Die Datei ist Keine CSafe Datei!")
+    CSafeDateiformat = False
+    Exit Function
+ End If
+ 
+ 'dbf.Properties("Description") = dbf.Properties("Description") & vbCrLf & " CSafe 2016"
+ If Err.Number <> 0 Then Debug.Print "1)" & Err.description
+ dbf.Close
+ Debug.Print "Datenbank:", dbs.Name
+ 'Debug.Print dbf.Name
+' dbf.Fields(1).Name
+ 
+  'Neu Tabbelle
+' tDA_Betriebsarten
+sSql = _
+        "CREATE TABLE tDA_Betriebsarten (" & _
+        "BaDID COUNTER CONSTRAINT PK PRIMARY KEY, " & _
+        "BaDfiGu GUID, " & _
+        "BaDfiBaiD INT, " & _
+        "BaDBez VARCHAR(255), " & _
+        "BaDBezKurz VARCHAR(255));"
+
+        dbs.Execute sSql
+        If Err.Number <> 0 Then Debug.Print "2)" & Err.description
+
+sSql = _
+        "CREATE TABLE tDA_MRL (" & _
+        "MRID COUNTER CONSTRAINT PK PRIMARY KEY, " & _
+        "MRfiLiMRL VARCHAR(255) , " & _
+        "MRVersion VARCHAR(255) , " & _
+        "MRfiCSafe GUID, " & _
+        "MRfiExt_Dok VARCHAR(255) , " & _
+        "MRfiExt_Seite VARCHAR(255) , " & _
+        "MRExtBem LONGTEXT);"
+        
+        dbs.Execute sSql
+        If Err.Number <> 0 Then Debug.Print "3)" & Err.description
+
+'Tabelle ergänzen
+' tDA_Projekte
+sSql = _
+        "ALTER TABLE tDA_Projekte " & _
+        "ADD COLUMN ProBez VARCHAR(255);"
+        dbs.Execute sSql
+
+        If Err.Number <> 0 Then Debug.Print "4)" & Err.description
+
+'Tabelle ergänzen
+'tDA_Analys
+'RisikoPersonen     Zahl Long Integer
+'RestRisikoPersonen Zahl Long Integer
+sSql = _
+        "ALTER TABLE tDA_Analyse " & _
+        "ADD COLUMN RisikoPersonen INT;"
+        dbs.Execute sSql
+        If Err.Number <> 0 Then Debug.Print "5)" & Err.description
+
+sSql = _
+        "ALTER TABLE tDA_Analyse " & _
+        "ADD COLUMN RestRisikoPersonen INT"
+        dbs.Execute sSql
+        If Err.Number <> 0 Then Debug.Print "6)" & Err.description
+ 
+ 
+dbs.Close
+
+CSafeDateiformat = True
+
+End Function
+Sub test()
+Dim sDatei As String
+Dim S1 As String
+
+sDatei = CurrentProject.Path & "\Da01\" & "CS_Test.accdb"
+
+If Dir(sDatei) = sDatei Then
+    
+    S1 = Left(sDatei, Len(sDatei) - 5)
+    S1 = S1 & ".CSafe"
+    'Copy
+    CSafeDateiformat sDatei
+Else
+    MsgBox ("Datei nicht gefunden")
+End If
+    
+End Sub

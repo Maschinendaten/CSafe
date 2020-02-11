@@ -1,0 +1,12 @@
+Option Compare Database
+Option Explicit
+
+
+Sub xy()
+
+
+    DoCmd.NavigateTo "acNavigationCategoryObjectType"
+   ' funDBEigenschaft "AllowBypassKey", dbBoolean, True
+
+
+End Sub

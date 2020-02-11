@@ -1,0 +1,35 @@
+Option Compare Database
+Option Explicit
+
+'Nachfolgende Verweise müssen vorhanden sein
+'Visual Basic For Applications
+'Microsoft Access 10.0 Objekt Library
+'Microsoft DAO 3.6 Objekt Library
+'Microsoft Activ X Dataobjekts Ver2.1
+'Microsoft Windows Common Controls 5.0(SP2)
+'Microsoft Graph 10.0 Objekt Library
+'Microsoft Excel 10.0 Objekt Library
+'Microsoft Office 10.o Objekt Library
+
+' Die Version 10.0 steht für Office 2002 bei Office 2003 steht hier 11.0 usw.
+
+
+Public Function FunVerweiseAnzeigen() As String
+    Dim ref As Reference
+    Dim strSp1 As String
+    
+    If OnErRe Then On Error Resume Next
+    
+    ' Enumerate through References collection.
+    For Each ref In References
+        ' Check IsBroken property.
+        If ref.IsBroken = False Then
+            strSp1 = strSp1 & "Name: " & ref.Name & "  Version: " & ref.Major & "." & ref.Minor
+            strSp1 = strSp1 & " Path: " & ref.FullPath & vbCrLf
+        Else
+            strSp1 = strSp1 & "GUIDs of broken references:"
+            strSp1 = strSp1 & ref.GUID & vbCrLf
+        End If
+    Next ref
+    FunVerweiseAnzeigen = strSp1
+End Function

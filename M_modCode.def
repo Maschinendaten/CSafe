@@ -1,0 +1,285 @@
+Option Compare Database
+Option Explicit
+
+Function funReadMac(NrI As Long) As String
+'liest die Macadresse der Netzwerkkarte aus
+Dim st1 As String
+Dim Nr As Long
+Dim a As Long
+
+Dim objWMIService As Object, objItem As Object, colItems As Object
+If OnErRe Then On Error Resume Next
+funReadMac = ""
+Set objWMIService = GetObject("winmgmts:\\" & "." & "\root\cimv2")
+Set colItems = objWMIService.ExecQuery _
+    ("Select * from Win32_NetworkAdapterConfiguration")
+For Each objItem In colItems
+    a = a + 1
+    st1 = objItem.MACAddress
+    Nr = Val(Mid(objItem.Caption, 2, 10))
+    If st1 <> "" Then 'es wird die erste Mac Adresse verwendet
+        funReadMac = st1
+        GoTo Ende
+    End If
+    'If St1 <> "" Then Debug.Print "MAC Address: " & St1 & "   Caption: " & objItem.Caption
+    
+Next
+
+Beep
+
+Ende:
+Exit Function
+Err_:
+
+End Function
+
+Function funCodeout() As String
+'Gibt den Code des Systems aus der Code besteht aus 6 Buchstaben oder Zeichen die aus der Mac Adresse bestehen
+'plus 4 Hexzahlen die das Ablaufdatum ab dem 1.1.2011 angeben
+
+Dim st1 As String
+Dim st2 As String
+Dim L1 As Long
+Dim L2 As Long
+Dim l3 As Long
+Dim L4 As Long
+Dim L5 As Long
+Dim L6 As Long
+
+'Speichert die verwendete Mac Adresse wegen folgendem Problem:
+'Bei Computer mit mehreren Netzwerkkarten ändert sich dir Reihenfolge
+'Damit ist durch die erste Mac Adresse keine zuverlässige Identifikatio
+'möglich. Is So noch nicht sicher da die Macadresse in die Registry kopiert werden kann.
+
+'Prüfe ob Mac in der Registry
+st1 = funLadeReg("Lizens", "USED_MAC", "NIX")
+If st1 = "nix" Then
+    st1 = funReadMac(1)
+    funSpeicherReg "Lizens", "USED_MAC", st1
+End If
+
+
+
+
+L1 = Val("&H" & Mid(st1, 1, 2))
+l3 = Val("&H" & Mid(st1, 4, 2))
+L5 = Val("&H" & Mid(st1, 7, 2))
+L2 = Val("&H" & Mid(st1, 10, 2))
+L4 = Val("&H" & Mid(st1, 13, 2))
+L6 = Val("&H" & Mid(st1, 16, 2))
+
+'funCodeout = st2
+funCodeout = FS2(Hex(L6)) & FS2(Hex(L5)) & "-" & FS2(Hex(L4)) & FS2(Hex(l3)) & "-" & FS2(Hex(L2)) & FS2(Hex(L1)) & "-" & FS4(Hex(CLng(Now - 40544)))
+
+
+End Function
+
+Function FS2(st As String) As String
+'Gibt dem String eine feste Breite füllt die Leestellen mit 0 auf FS2 steht für 2 Zeichen
+If Len(st) = 1 Then
+    FS2 = "0" & st
+Else
+    FS2 = st
+End If
+
+
+End Function
+
+Function FS4(st As String) As String
+'Gibt dem String eine feste Breite füllt die Leestellen mit 0 auf FS4 steht für 4 Zeichen
+
+Select Case Len(st)
+    Case 1
+        FS4 = "000" & st
+    Case 2
+        FS4 = "00" & st
+    Case 3
+        FS4 = "0" & st
+    Case 4
+        FS4 = st
+End Select
+        
+
+
+End Function
+
+Function FS3(st As String) As String
+'Gibt dem String eine feste Breite füllt die Leestellen mit 0 auf FS4 steht für 4 Zeichen
+
+Select Case Len(st)
+    Case 1
+        FS3 = "00" & st
+    Case 2
+        FS3 = "0" & st
+    Case 3
+        FS3 = st
+End Select
+        
+
+
+End Function
+
+
+
+
+
+Function funCodeCheck(SC1 As String, Da As Date) As Long
+'vergleicht den eingegebenen Code und prüft ob gültig
+
+Dim L1 As Long
+Dim L2 As Long
+Dim l3 As Long
+Dim L4 As Long
+Dim L5 As Long
+Dim L6 As Long
+
+Dim st2 As String
+Dim st1 As String
+
+Dim a As Long
+Dim c1 As Long
+Dim LT As Long
+Dim LT1 As Long
+
+If Nz(SC1, "") = "" Or Len(SC1) < 6 Then
+    funCodeCheck = -2
+    Exit Function
+End If
+
+st1 = funReadMac(1)
+
+L1 = Val("&H" & Mid(st1, 1, 2))
+l3 = Val("&H" & Mid(st1, 4, 2))
+L5 = Val("&H" & Mid(st1, 7, 2))
+L2 = Val("&H" & Mid(st1, 10, 2))
+L4 = Val("&H" & Mid(st1, 13, 2))
+L6 = Val("&H" & Mid(st1, 16, 2))
+
+If Len(SC1) = 9 Then LT = Val("&H" & Right(SC1, 3))
+
+
+st2 = funCodeLesen(L1 + LT)
+st2 = st2 & funCodeLesen(L1 + L2 + LT)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + LT)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + LT)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + L5 + LT)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + L5 + L6 + LT)
+
+For a = 1 To 6
+    If Asc(Mid(SC1, a, 1)) = Asc(Mid(st2, a, 1)) Then c1 = c1 + 1
+Next a
+
+funCodeCheck = -3
+
+If c1 >= 6 Then
+    If LT > 0 Then
+        LT1 = CLng(Da - 40544)
+        If LT1 <= LT Then
+            funCodeCheck = LT - LT1 'Lizens ist noch x Tage gültig
+        Else
+            funCodeCheck = -1 'Zeit ist abgelaufen
+        End If
+    Else
+        funCodeCheck = 999 'Lizens ist endlos gültig
+    End If
+End If
+
+End Function
+
+Function funMakeCode(st1 As String, Optional Da As Date) As String
+'Erzeugt einen Code Basierend aus der übergebenen Hex Zahlenreihe
+'Die Zahlen müssen in dem Format aaaa-aaaa-aaaa vorliegen
+'Wobei die Zahlen TL das Ablaufdatum angibt wenn 0 ist der Code endlos gültig
+Dim L1 As Long
+Dim L2 As Long
+Dim l3 As Long
+Dim L4 As Long
+Dim L5 As Long
+Dim L6 As Long
+Dim st2 As String
+
+Dim TL As Long
+If CLng(Da) <> 0 Then
+    TL = CLng(Da - 40544)
+Else
+    TL = 0
+End If
+
+L6 = Val("&H" & Mid(st1, 1, 2))
+L5 = Val("&H" & Mid(st1, 3, 2))
+L4 = Val("&H" & Mid(st1, 6, 2))
+l3 = Val("&H" & Mid(st1, 8, 2))
+L2 = Val("&H" & Mid(st1, 11, 2))
+L1 = Val("&H" & Mid(st1, 13, 2))
+
+
+
+
+
+st2 = funCodeLesen(L1 + TL)
+st2 = st2 & funCodeLesen(L1 + L2 + TL)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + TL)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + TL)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + L5 + TL)
+st2 = st2 & funCodeLesen(L1 + L2 + l3 + L4 + L5 + L6 + TL)
+
+If TL = 0 Then
+    funMakeCode = st2
+Else
+    
+    funMakeCode = st2 & FS3(Hex(CLng(Da - 40544)))
+End If
+
+End Function
+
+
+Function funCodeLesen(Nr1 As Long) As String
+Dim st1 As String
+
+st1 = "DASWORTDESBUDDHA2.RechteGesinnung(samm?-sankappa)75WasaberistrechteGesinnung?EntsagendeGesinnung(nekkhamma-sankuppa),haßloseGesinnung(avy?p?da-sankappa)undfriedfertigeGesinnung(avihims?-sankappa).76WELTLICHEUNDÜBERWELTLICHEGESINNUNGM.117RechteGesinnung,sageich,istvonzweierleiArt:esgibteinerechteGesinnung,dienochdenTriebenunterworfenist,verdienstvollistundweltlichenLohnbringt;undesgibteinerechteGesinnung,dieedelist,triebfrei,überweltlichundzumedlenPfadegehört.1.EntsagendeGesinnung,haßloseGesinnung,friedfertigeGesinnung,dasisteinerechteGesinnung,dienochdenTriebenunterworfenist,verdienstvollistundweltlichenLohnbringt.772.Wasdaaberbeieinem,dermitheiligem,ungetrübtemHerzenaufdemheiligenPfadeverweiltunddenheiligenPfadentfaltet,anGedankebesteht,anGedankenfassung,Denken,BeobachtungundGerichtetseinderGedanken,anZielbewußtseindesGeistes,ansprachlicherTätigkeit(desGeistes,vací-sankh?ra):dasisteinerechteGesinnung,dieedelist,triebfrei,überweltlichundzumedlenPfadegehört.VONDREIDINGENBEGLEITETWennmannunverk" & _
+"ehrteGesinnungalsverkehrtundrechteGesinnungalsrechterkennt,sohatmanrechteErkenntnis(samm?-ditthi).Währendmansichaberbemüht,dieverkehrteGesinnungzuüberwindenunddierechteGesinnungzuerwecken,zueinersolchenZeitübtmanrechteAnstrengung(samm?-v?y?ma)WährendmanabervollAchtsamkeitdieverkehrteGesinnungüberwindetunddierechteGesinnungerweckt,zueinersolchenZeitübtmanrechteAchtsamkeit(samm?-sati).SomitgibtesdreiDinge,diedierechteGesinnungbegleitenundihrfolgen,nämlich:rechteErkenntnis,rechteAnstrengungundrechteAchtsamkeit.3.RechteRede(samm?-v?c?)WasaberistrechteRede?ABSTEHENVOMLÜGEN78A.X.1761.DahateinerdasLügenverworfen,vomLügenstehterab.DieWahrheitsprichter,istderWahrheitergeben,anderWahrheithälterfest,istvertrauenswürdig,betrügtdieMenschennicht.KommternunineineGesellschaftvonLeutenoderunterMänneroderVerwandteoderineineKörperschaftoderwirdervorGerichtgeladenundalsZeugeaufgefordertauszusagen,waserwisse,soantworteter,wennernichtsweiß:,Ichweißnichts';undwennerweiß,sagter:,Ichweiß'.Haternichtsgesehen,sosagter:," & _
+"Ichhabenichtsgesehen';hateraberetwasgesehen,sosagter:,Ichhabeetwasgesehen'.SosprichterwederumseinerselbstwillennochumeinesanderenwillennochumirgendeinesweltlichenVorteilswillenjemalseinebewußteLüge.79ABSTEHENVONZWISCHENTRÄGEREI2.Zwischenträgereihaterverworfen,vonZwischenträgereistehterab.Waserhiergehörthat,erzählterdortnichtwieder,umjenezuentzweien;undwaserdortgehörthat,erzählterhiernichtwieder,umdiesezuentzweien.SoeinigterEntzweite,ermutigtdieGeeinigten,anEintrachthaterFreudeundGefallen,undEintrachtförderndeWortesprichter.80ABSTEHENVONROHERREDE3.RoheRedehaterverworfen,vonroherRedestehterab.Worte,dieuntadeligsind,demOhreangenehm,liebreich,zumHerzengehend,höflich,vielenliebundangenehm,solcheWortesprichter.InM.21heißtes::—SelbstwenndaeinemeinRäubermiteinerdoppelgriffigenSägeGelenkeundGliederdurchschneidet,sowürde,werdainZorngeriete,nichtmeineWeisungbefolgen.Dahatmansichnunalsozuüben:,NichtsollmeinGeistaußersichgeraten!NichtdarfichübleWorteäußern!VonWohlwollenundgütigerGesinnungerfülltwillichbleiben," & _
+"ohneGrollinmeinemInnern;undjenePersonwillichmitgütigerGesinnungdurchdringen,unddaraufgestütztwillichdieganzeWeltmitgütigemGeistedurchdringen,einemweiten,entfalteten,unbeschränkten,freivonHaßundÜbelwollen.81ABSTEHENVONLEEREMGESCHWÄTZ4.LeeresGeschwätzhaterverworfen,vonleeremGeschwätzstehterab.ZurrechtenZeitsprichter,denTatsachenunddemSinnegemäß,sprichtüberdieLehreundsittlicheZucht.SeineWortesinddenkwürdig,begründet,abgemessenundsinnvoll.Wasnun,ihrJünger,istrechteRede?82WELTLICHUNDÜBERWELTLICHM.117RechteRede,sagich,istvonzweierleiArt:esgibteinerechteRede,dienochdenTriebenunterworfenist,verdienstlichistundweltlichenLohnbringt;undesgibteinerechteRede,dieedelist,triebfrei,überweltlichundzumedlenPfadegehört.1.DasAbstehenvonLüge,Zwischenträgerei,roherRedeundleeremGeschwätz:dasisteinerechteRede,dienochdenTriebenunterworfenist,verdienstlichistundweltlichenLohnbringt.2.Wasdaaberbeieinem,dermitheiligem,ungetrübtemHerzenaufdemheiligenPfadeverweiltunddenheiligenPfadentfaltet,Abwendung,Wegwendung," & _
+"EnthaltsamkeitundAbstehenvomvierfachüblenWandelinWortenist: dasisteinerechteRede,dieedelist,triebfrei,überweltlichundzumedlenPfadegehört.83VONDREIDINGENBEGLEITETWennmannunverkehrteRedealsverkehrtundrechteRedealsrechterkennt,sohatmanrechteErkenntnis.Währendmansichaberbemüht,dieverkehrteRedezuüberwindenunddierechteRedezuerwecken,zueinersolchenZeitübtmanrechteAnstrengung.WährendmanabervollAchtsamkeitdieverkehrteRedeüberwindetunddierechteRedeerweckt,zueinersolchenZeitübtmanrechteAchtsamkeit.SomitgibtesdreiDinge,diedierechteRedebegleitenundihrfolgen,nämlich:rechteErkenntnis,rechteAnstrengungundrechteAchtsamkeit.4.RechtesTun(samm?-kammanta)WasaberistrechtesTun?84ABSTEHENVOMTÖTENA.X.1761.DahateinerdasTötenlebenderWesenverworfen,vomTötenlebenderWesenstehterab.StockundSchwertverwerfendzartfühlend,liebreich,isteraufdasWohlallerlebendenWesenundGeschöpfebedacht.85ABSTEHENVOMSTEHLEN2.DasStehlenhaterverworfen,vomStehlenstehterab.Nurwasmanihmgibt,nimmteran,wartetbisman'sihmgibt,undehrlichenundlauteren" & _
+"Herzensverweilter.86ABSTEHENVONUNZULÄSSIGEMGESCHLECHTSVERKEHR3.UnzulässigenGeschlechtsverkehrhaterverworfen,vonunzulässigemGeschlechtsverkehrstehterab.MitMädchen,dieunterderObhutvonVater,Mutter,Eltern,Bruder,Schwester,Verwandten,unterderObhutderSippeoderdesGesetzesstehen,odermitverheiratetenFrauen,Gefangenen,biszudenblumengeschmücktenBräuten:mitallendiesenpflegterkeinengeschlechtlichenUmgang.Das,ihrJünger,istrechtesTun.87WELTLICHUNDÜBERWELTLICHM.117RechtesTun,sageich,istvonzweierleiArt:esgibtrechtesTun,dasnochdenTriebenunterworfenist,verdienstvollistundweltlichenLohnbringt;undesgibtrechtesTun,dasedelist,triebfrei,überweltlichundzumedlenPfadegehört.1.DasAbstehenvomTötenlebenderWesen,vomStehlen,vonunzulässigemGeschlechtsverkehr:dasistrechtesTun,dasnochdenTriebenunterworfenist,verdienstlichistundweltlichenLohnbringt.2.Wasdaaberbeieinem,dermitheiligem,ungetrübtemHerzenaufdemheiligenPfadeverweiltunddenheiligenPfadentfaltet,Abwendung,Wegwendung,Enthaltsamkeit" & _
+"undAbstehenvomdreifachüblenWandelinWerkenist:dasistrechtesTun,dasedelist , triebfrei, überweltlichundzumedlenPfadegehört.88VONDREIDINGENBEGLEITETWennm" & _
+"annunverkehrtesTunalsverkehrtundrechtesTunalsrechterkennt,sohatmanrechteErkenntnis.Währendmansichaberbemüht,dasverkehrteTunzuüberwindenunddasrechteTunzuerwecken,zueinersolchenZeitübtmanrechteAnstrengung.WährendmanabervollAchtsamkeitdasverkehrteTunüberwindetunddasrechteTunerweckt,zueinersolchenZeitübtmanrechteAchtsamkeit.SomitgibtesdreiDinge,diedasrechteTunbegleitenundihmfolgen,nämlich:rechteErkenntnis,rechteAnstrengungundrechteAchtsamkeit."
+
+'Debug.Print Len(st1)
+
+funCodeLesen = Mid(st1, Nr1 + 2 + 8 + 4, 1)
+
+End Function
+
+Function funNameCode(NameStr As String) As String
+'Die funktion erzeugt aus dem Namen einen (code) String der aus dem vorgegeben Text erzeugt wird
+Dim a As Long
+Dim b As Long
+Dim S1 As String
+
+
+b = 0
+For a = 1 To Len(NameStr)
+    b = b + Asc(Mid(NameStr, a, 1))
+    S1 = S1 & funCodeLesen(b)
+Next a
+
+funNameCode = S1
+
+End Function
+
+Function funCodeName(CodeStr As String) As String
+'Die funktion erzeugt aus dem Namen einen (code) String der aus dem vorgegeben Text erzeugt wird
+Dim a As Long
+Dim b As Long
+Dim S1 As String
+
+b = 0
+For a = 1 To Len(CodeStr)
+    b = b + Asc(Mid(CodeStr, a, 1))
+    S1 = S1 & funCodeLesen(b)
+Next a
+
+funCodeName = S1
+
+End Function

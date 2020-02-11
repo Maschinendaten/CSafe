@@ -1,0 +1,29 @@
+Option Compare Database
+Option Explicit
+
+Function funCheckRef(Optional Info_ As Boolean)
+    ' Zeigt defekte refferenzen an
+    Dim objRef As Reference
+    Dim strText As String
+
+    If Application.BrokenReference Then
+
+       strText = "Auf Ihrem System fehlen folgende Komponenten:" & vbCrLf
+       For Each objRef In Application.References
+           If objRef.IsBroken Then
+               strText = strText & "-> " & objRef.Name & vbCrLf
+           End If
+       Next objRef
+
+       strText = vbCrLf & strText
+       strText = strText & "Die Anwendung muss beendet werden, "
+       strText = strText & "bitte verständigen Sie Ihren Systemadministrator."
+
+       MsgBox strText, vbCritical, "Anwendungstitel"
+
+       DoCmd.Quit
+    Else
+       If Info_ = True Then MsgBox ("Alle Refferenzen OK!")
+    End If
+  
+End Function

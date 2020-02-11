@@ -1,0 +1,457 @@
+
+Option Compare Database
+Option Explicit
+
+Function funExtOutTabelle(sTabelle As String)
+'Erstellet : M.Gut 2.2.2014  Bean WE
+'Beispiel Aufruf : funExtOutTabelle("t_LiGefahr")
+'Beispiel Aufruf : funExtOutTabelle("t_LiNormen")
+
+'MG 29.5.2014 Late Binding
+'Die Funktion liest die Tabellendaten aus und legt eine xlsx Datei mit den Daten an
+'Die 10te Zeile wird orange eingefärbt und enthält die Namen der Datenfelder
+'In den ersten 10 Zeilen können weiter Informationen stehen
+'ab Zeile 11 bebinnen die eigentlichen Daten
+
+Dim db As DAO.Database
+Dim Rs1 As DAO.Recordset
+Dim OK As Boolean
+Dim i As Long
+Dim SP As Long
+Dim ZE As Long
+
+
+Dim S1 As String
+Dim sDateiName As String
+
+Dim xlApp As Object 'Excel.Application   ' Objekt
+Dim xlWbk As Object 'Excel.Workbook      ' Objekt
+Dim xlSht 'As Excel.Worksheet
+
+
+'Cells (Zeile, Spalte)
+
+    Set xlWbk = CreateObject("Excel.Sheet")
+    Set xlApp = xlWbk.Application
+   ' Set xlSht = xlWbk.Worksheets(1)
+
+    xlApp.visible = True
+    xlApp.WindowState = 1
+    Set xlSht = xlWbk.Worksheets("Tabelle1")
+
+
+'if onerre then On Error Resume Next
+
+
+'prüfen ob Tabelle vorhande
+Set db = CurrentDb()
+
+For i = 0 To db.TableDefs.count - 1
+    If db.TableDefs(i).Name = sTabelle Then
+        OK = True
+    End If
+Next i
+
+
+'Tabellenfelder auslesen und Datei anlegen
+'Es sollen nur die Felder Verwendet werden bei denen in der Descripion ein # als erstes Zeichen ist
+
+Set Rs1 = db.OpenRecordset(sTabelle)
+
+'Der Kopf wird erzeugt in den ersten 10 Zeilen dieser ist zum rücklesen wichtig
+xlSht.Cells(1, 1).Value = "Info:"
+xlSht.Cells(1, 2).Value = "Diese Tabelle wurde von CSafe erzeugt. Sie können Daten ändern oder ergänzen. Information unter: www.CSafe.biz/Anleitung"
+
+xlSht.Cells(3, 1).Value = "Tabelle:"
+xlSht.Cells(3, 2).Value = sTabelle
+
+xlSht.Cells(4, 1).Value = "Datum:"
+xlSht.Cells(4, 2).Value = str(Now)
+
+
+
+
+S1 = ""
+
+ZE = 10
+SP = 0
+'Excel Kopfzeilen farbig einfärben und befüllen
+For i = 0 To Rs1.Fields.count - 1
+    SP = SP + 1
+    xlSht.Cells(ZE, SP).Interior.ColorIndex = 46  'orange ähnlich
+    xlSht.Cells(ZE, SP).Value = Rs1.Fields(i).Name
+Next i
+
+
+'Inhalt der Tabelle auslesen und Felder befüllen
+
+SP = 0
+ZE = 11
+
+While Rs1.EOF = False
+    S1 = ""
+    For i = 0 To Rs1.Fields.count - 1
+        SP = i + 1
+        'Debug.Print Rs1.Fields(i).type
+        If Rs1.Fields(i).type = 10 Then xlSht.Cells(ZE, SP).NumberFormat = "@" 'Wenn textfeld Format vorgeben
+        xlSht.Cells(ZE, SP).Value = Nz(Rs1.Fields(i).Value)
+    Next i
+    ZE = ZE + 1
+    Rs1.MoveNext
+
+Wend
+
+
+
+Rs1.Close
+db.Close
+
+'Excel abspeichern
+xlWbk.SaveAs (CurrentProject.Path & "\" & sTabelle & ".xlsx")
+
+sDateiName = CurrentProject.Path & "\" & sTabelle & ".xlsx"
+
+Shell "excel.exe" & " " & sDateiName, vbMaximizedFocus
+
+
+
+
+End Function
+
+
+Public Sub test1()
+'liest die Description eines Feldes aus !! Description nur vorhanden wenn ein Wert eingetragen ist ansonsten Feld nicht da
+    Dim PropertyCounter As Integer
+    Dim FieldCounter As Integer
+    Dim tdf As DAO.TableDef
+    Dim fld As DAO.Field
+    Dim dbs As DAO.Database
+
+    Set dbs = CurrentDb
+    Set tdf = dbs.TableDefs("tda_Anlage")
+
+    For FieldCounter = 0 To tdf.Fields.count - 1
+        Set fld = tdf.Fields(FieldCounter)
+        For PropertyCounter = 0 To tdf.Fields(FieldCounter).Properties.count - 1
+            If tdf.Fields(FieldCounter).Properties(PropertyCounter).Name = "Description" Then
+
+                Debug.Print "Description: ", PropertyCounter, _
+                    tdf.Fields(FieldCounter).Properties(PropertyCounter).Name, _
+                    tdf.Fields(FieldCounter).Properties(PropertyCounter).Value
+
+            End If
+
+        Next PropertyCounter
+    
+Next FieldCounter
+
+End Sub
+
+'Die Funktion überschribt eine bestehende Datei und legt den Kopf an
+'Im Kopf stehen die Datenbank Bezeichnenr
+Function funExtOutNew()
+   ' sDateiName As String, sDaten As String
+    
+End Function
+
+
+
+
+'Die Funktion prüft ob die Datei besteht wenn Ja werden die Daten angefügt
+'Wenn nein wird eine Meldung ausgegeben
+
+Function funExtOutDat(sDateiName As String, sDaten As String)
+Dim S1 As String
+Dim a As Long
+
+    'Line Input #1, S1
+    
+sDateiName = CurrentProject.Path & "\Tab.Csv"
+
+Open sDateiName For Output As #1
+    
+'Open FilePath For Append Access Write Lock Write As FileNum
+    
+    S1 = "NR;Text 1;Nummmer;Text 2"
+    Print #1, S1
+    
+    For a = 0 To 10
+        S1 = a & "; Der Text ; 1234; Noch ein Text"
+        Print #1, S1
+    Next a
+    Close #1
+End Function
+
+
+
+Function funCellOut(vType As Long, Wert As String)
+
+'Dim xlApp As Excel.Application   ' Objekt
+'Dim xlWbk As Excel.Workbook      ' Objekt
+'Dim xlSht As Excel.Worksheet
+'
+''Cells (Zeile, Spalte)
+'
+'    Set xlWbk = CreateObject("Excel.Sheet")
+'    Set xlApp = xlWbk.Application
+'   ' Set xlSht = xlWbk.Worksheets(1)
+'
+'    xlApp.visible = True
+'    xlApp.WindowState = 1
+'    Set xlSht = xlWbk.Worksheets("Tabelle1")
+'    'xlWbk.Windows(0).visible = True
+'    xlSht.Cells(1, 1).Value = "Test Hallo Welt"
+'    xlSht.Range("A2").Value = "12.123.123"
+'    xlSht.Range("A3").Value = "12,123,123"
+'    xlSht.Range("A4").Value = "12.123"
+'    xlSht.Range("A5").Value = "12,123"
+'    'xlSht.Range("A6").FormatConditions = "02.2"
+'    xlSht.Range("A6").Value = "02.2"
+'    xlSht.Range("A7").NumberFormat = "@"
+'    xlSht.Range("A7").Value = "02.30"
+'    xlSht.Range("A8").Value = "02.30"
+'
+'
+'
+'
+'
+'    xlWbk.SaveAs (CurrentProject.Path & "\Test01.xlsx")
+
+    
+
+End Function
+
+
+
+
+
+
+
+
+
+
+
+
+Function funExcelOutTest()
+
+'Dim xlApp As Excel.Application   ' Objekt
+'Dim xlWbk As Excel.Workbook      ' Objekt
+'Dim xlSht As Excel.Worksheet
+'
+''Cells (Zeile, Spalte)
+'
+'    Set xlWbk = CreateObject("Excel.Sheet")
+'    Set xlApp = xlWbk.Application
+'   ' Set xlSht = xlWbk.Worksheets(1)
+'
+'    xlApp.visible = True
+'    xlApp.WindowState = 1
+'    Set xlSht = xlWbk.Worksheets("Tabelle1")
+'    'xlWbk.Windows(0).visible = True
+'    xlSht.Cells(1, 1).Value = "Test Hallo Welt"
+'    'http://excelwelt.de/excelallg/farb.html
+'    xlSht.Cells(1, 1).Interior.ColorIndex = 46  'orange ähnlich
+'    xlSht.Cells(2, 1).Value = "12.123.123"
+'    xlSht.Range("A3").Value = "12,123,123"
+'    xlSht.Range("A4").Value = "12.123"
+'    xlSht.Range("A5").Value = "12,123"
+'    'xlSht.Range("A6").FormatConditions = "02.2"
+'    xlSht.Range("A6").Value = "02.2"
+'    xlSht.Range("A7").NumberFormat = "@"
+'    xlSht.Range("A7").Value = "02.30"
+'    xlSht.Range("A8").Value = "02.30"
+'
+'
+'
+'
+'
+'    xlWbk.SaveAs (CurrentProject.Path & "\Test01.xlsx")
+
+    
+
+End Function
+
+
+Function funExtInTabelle(sTabelle As String)
+'Erstellet : M.Gut 16.2.2014  Bean WE MG 29.5.2014 Late Binding
+'Beispiel Aufruf : funExtInTabelle("t_LiGefahr")
+'Beispiel Aufruf : funExtInTabelle("t_LiNormen")
+
+
+'Die Funktion liest eine xlsx Datei ein und speichert die Daten in der Tabelle
+'Es wird der Dateiname der Tabelle in Zeile 3 Spalte 2 geprüft dieser muss dem Tabellennamen entsprechen
+'In Zeile 10 stehen die Feldbezeichnenr diese müssen auch der Tabelle entsprechen
+'ab Zeile 11 gehts dann los hier werden die Daten eingelesen so wie sie abgespeichert werden
+'wenn eine komplett leere Zeile kommt wird das Einlesen beendet
+
+
+Dim db As DAO.Database
+Dim Rs1 As DAO.Recordset
+Dim OK As Boolean
+Dim i As Long
+Dim SP As Long
+Dim ZE As Long
+Dim sDat As String
+Dim cOK As Long
+
+
+Dim S1 As String
+Dim sDateiName As String
+
+Dim xlApp As Object 'Excel.Application   ' Objekt
+Dim xlWbk As Object 'Excel.Workbook      ' Objekt
+Dim xlSht           'As Excel.Worksheet
+
+On Error GoTo Err_
+
+
+'Datei auswählen die eingelesen werden soll
+sDat = funDateiAuswaehlen(CurrentProject.Path, ".xlsx")
+
+'Wenn keine Datei Funktion beenden
+If sDat = "" Then Exit Function
+
+
+'öffne bestehende Excell Datei
+Set xlWbk = CreateObject(sDat)
+Set xlSht = xlWbk.Worksheets(1)
+
+'xlApp.visible = True
+'xlApp.WindowState = 1
+
+If xlSht.Cells(3, 2).Value <> sTabelle Then
+    MsgBox LA("Der ausgewähle Tabellennamen entspricht nicht dem Tabellennamen in Zeile 3 der Excel Tabelle.") & vbCrLf & sTabelle
+    Exit Function
+End If
+
+
+'prüfen ob Tabelle vorhande
+Set db = CurrentDb()
+
+OK = False
+For i = 0 To db.TableDefs.count - 1
+    If db.TableDefs(i).Name = sTabelle Then
+        OK = True
+    End If
+Next i
+
+If OK = False Then
+    MsgBox LA("Die Ausgewähle Tabelle ist nicht in der Datenbank vorhanden.") & vbCrLf & sTabelle
+    Exit Function
+End If
+
+
+'Tabellenfelder auslesen und mit Excel vergleichen
+'Die Namen müssen gleich sein
+
+Set Rs1 = db.OpenRecordset(sTabelle)
+
+DoCmd.OpenForm "frmFortschritt"   'Zeigt Fortschritts Form an
+Screen.MousePointer = 11      'Schaltet die Maus auf Eieruhr
+
+S1 = ""
+ZE = 10
+SP = 0
+OK = True
+For i = 0 To Rs1.Fields.count - 1
+    SP = SP + 1
+    Form_frmFortschritt.funAnzeige Rs1.Fields.count - 1, i  'Refresh die Anzeige mit neuem Wert sonst kein Spass
+    If xlSht.Cells(ZE, SP).Value <> Rs1.Fields(i).Name Then
+        OK = False
+    End If
+Next i
+Screen.MousePointer = 0       'Schaltet die Maus auf normal
+DoCmd.Close acForm, "frmFortschritt"  'Schließt das Formular
+
+
+If OK = False Then
+    MsgBox LA("Die Ausgewähle Tabelle ist nicht in der Datenbank vorhanden.") & vbCrLf & sTabelle
+    Exit Function
+End If
+
+
+'Nachfragen ob Tabelle gelöscht werden soll
+If MsgBox(LA("Soll die Tabelle gelöscht und neu mit der Excel Datei befüllt werden."), vbYesNoCancel) <> vbYes Then
+    MsgBox LA("Der Vorgang wird beendet")
+    Exit Function
+End If
+
+'Tabelle löschen
+CurrentDb().Execute "DELETE FROM " & sTabelle
+
+
+'Excel ab Zeile 11 auslesen und Tabelle befüllen
+SP = 0
+ZE = 11
+OK = False
+cOK = 0
+DoCmd.OpenForm "frmFortschritt"   'Zeigt Fortschritts Form an
+Screen.MousePointer = 11      'Schaltet die Maus auf Eieruhr
+
+
+While OK = False
+    S1 = ""
+    Rs1.AddNew
+    For i = 0 To Rs1.Fields.count - 1
+        SP = i + 1
+        Debug.Print xlSht.Cells(ZE, SP).Value
+        Debug.Print Rs1.Fields(i).type
+        If Rs1.Fields(i).type = 4 Then  'Wenn Zahl dann
+            Rs1.Fields(i).Value = Val(xlSht.Cells(ZE, SP).Value)
+        Else
+            Rs1.Fields(i).Value = Nz(xlSht.Cells(ZE, SP).Value)
+        End If
+        If Nz(Rs1.Fields(i).Value) = "" Or Nz(Rs1.Fields(i).Value) = 0 Then
+            cOK = cOK + 1 'leere Spalte zählen
+        End If
+    Form_frmFortschritt.funAnzeige Rs1.Fields.count - 1, i  'Refresh die Anzeige mit neuem Wert sonst kein Spass
+
+    Next i
+
+    'Alle Felder in der Zeile sind leer beenden
+    If cOK >= Rs1.Fields.count Then
+        OK = True
+    End If
+    cOK = 0
+
+
+    ZE = ZE + 1
+    If OK = False Then
+        Rs1.Update 'Wenn ganze Zeile nicht leer abspeichern und Weiter Indexverletzung abfangen
+        'Ok = True
+    End If
+Wend
+
+    Screen.MousePointer = 0       'Schaltet die Maus auf normal
+    DoCmd.Close acForm, "frmFortschritt"  'Schließt das Formular
+
+
+
+
+
+'Im Kopf vermerken Das daten übertragen wurden
+xlSht.Cells(5, 1).Value = "Daten nach CSafe:"
+xlSht.Cells(5, 2).Value = str(Now)
+
+
+Rs1.Close
+db.Close
+
+'Excel abspeichern
+xlWbk.SaveAs (CurrentProject.Path & "\" & sTabelle & ".xlsx")
+
+sDateiName = CurrentProject.Path & "\" & sTabelle & ".xlsx"
+
+'Excel öffnen
+'Shell "excel.exe" & " " & sDateiName, vbMaximizedFocus
+
+Exit Function
+Err_:
+If Err.Number = 3022 Then
+    MsgBox LA("Die Excel Datei verursacht eine Index Verletzung in der Zeile: ") & vbCrLf & str(ZE - 1) & vbCrLf & "Der Index ist die Norm-Spalte die Werte müssen eindeutig sein!"
+    OK = True
+    Resume Next
+End If
+
+
+End Function

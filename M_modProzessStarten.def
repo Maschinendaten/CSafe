@@ -1,0 +1,109 @@
+Option Compare Database
+Option Explicit
+
+ ' 24.4.2016 MG / https://dbwiki.net/wiki/VBA_Tipp:_Prozess_starten_und_auf_Beendigung_warten
+
+ ' WaitShell "PING www.delcom.de", vbMinimizedNoFocus, 120, True
+ 'startet PING minimiert und beendet es automatisch nach 2 Minuten (wenn der Prozess nicht vorher von alleine terminiert).
+
+ 'WaitShell "excel.exe"   startet Excel und wartet unbegrenzt.
+
+Private Type STARTUPINFO
+      cb As Long
+      lpReserved As String
+      lpDesktop As String
+      lpTitle As String
+      dwX As Long
+      dwY As Long
+      dwXSize As Long
+      dwYSize As Long
+      dwXCountChars As Long
+      dwYCountChars As Long
+      dwFillAttribute As Long
+      dwFlags As Long
+      wShowWindow As Integer
+      cbReserved2 As Integer
+      lpReserved2 As Long
+      hStdInput As Long
+      hStdOutput As Long
+      hStdError As Long
+End Type
+
+Private Type PROCESS_INFORMATION
+      hProcess As Long
+      hThread As Long
+      dwProcessId As Long
+      dwThreadID As Long
+End Type
+
+#If Win64 Then
+    Private Declare PtrSafe Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As Long, ByVal dwMilliseconds As Long) As Long
+    Private Declare PtrSafe Function OpenProcess Lib "kernel32" (ByVal dwDesiredAccess As Long, ByVal bInheritHandle As Long, ByVal dwProcessId As Long) As Long
+    Private Declare PtrSafe Function CreateProcess Lib "kernel32" Alias "CreateProcessA" (ByVal _
+        lpApplicationName As Long, ByVal lpCommandLine As String, ByVal _
+        lpProcessAttributes As Long, ByVal lpThreadAttributes As Long, _
+        ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, _
+        ByVal lpEnvironment As Long, ByVal lpCurrentDirectory As Long, _
+        lpStartupInfo As STARTUPINFO, lpProcessInformation As _
+        PROCESS_INFORMATION) As Long
+    Private Declare PtrSafe Function TerminateProcess Lib "kernel32" (ByVal hProcess As Long, ByVal uExitCode As Long) As Long
+    Private Declare PtrSafe Function CloseHandle Lib "kernel32" (ByVal hObject As Long) As Long
+#Else
+
+    Private Declare Function WaitForSingleObject Lib "kernel32" (ByVal hHandle As Long, ByVal dwMilliseconds As Long) As Long
+    Private Declare Function OpenProcess Lib "kernel32" (ByVal dwDesiredAccess As Long, ByVal bInheritHandle As Long, ByVal dwProcessId As Long) As Long
+    Private Declare Function CreateProcess Lib "kernel32" Alias "CreateProcessA" (ByVal _
+        lpApplicationName As Long, ByVal lpCommandLine As String, ByVal _
+        lpProcessAttributes As Long, ByVal lpThreadAttributes As Long, _
+        ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, _
+        ByVal lpEnvironment As Long, ByVal lpCurrentDirectory As Long, _
+        lpStartupInfo As STARTUPINFO, lpProcessInformation As _
+        PROCESS_INFORMATION) As Long
+    Private Declare Function TerminateProcess Lib "kernel32" (ByVal hProcess As Long, ByVal uExitCode As Long) As Long
+    Private Declare Function CloseHandle Lib "kernel32" (ByVal hObject As Long) As Long
+#End If
+
+
+
+
+
+Private Const NORMAL_PRIORITY_CLASS = &H20&
+Private Const INFINITE = -1&
+Private Const SYNCHRONIZE = &H100000
+Private Const WAIT_TIMEOUT = 258&
+
+Public Function WaitShell(Cmdline As String, Optional Mode As Long = vbNormalFocus, _
+  Optional TimeOut As Long = INFINITE, Optional Terminate As Boolean = True)
+
+Dim pid As Long, pHnd As Long, Ret As Long, Merk As Date
+Dim uProc As PROCESS_INFORMATION
+Dim uStart As STARTUPINFO
+
+  ' Initialize data
+  uStart.cb = Len(uStart)
+  uStart.wShowWindow = Mode
+  uStart.dwFlags = 1
+
+' Start the shelled application:
+  pid = CreateProcess(0&, Cmdline, 0&, 0&, 1&, NORMAL_PRIORITY_CLASS, 0&, 0&, uStart, uProc)
+  If pid <> 0 Then
+'   Wait for the shelled application to finish:
+    Merk = Now + TimeOut / 86400 ' seconds
+    Do While True
+      Ret = WaitForSingleObject(uProc.hProcess, 0)
+    If Ret <> WAIT_TIMEOUT Then Exit Do
+    If TimeOut <> INFINITE And Merk < Now Then Exit Do
+      DoEvents
+    Loop
+    If Ret = 0 Then
+      WaitShell = True
+    Else
+      If Terminate Then Ret = TerminateProcess(uProc.hProcess, 0&)
+      WaitShell = Ret
+    End If
+    Ret = CloseHandle(pHnd)
+  Else
+    WaitShell = Ret
+  End If
+
+End Function

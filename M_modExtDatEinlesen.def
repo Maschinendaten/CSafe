@@ -1,0 +1,380 @@
+Option Compare Database
+Option Explicit
+
+'Dieses Modul soll Texte einlesen und in eine Tabelle verwandel
+'Es wird muss das PDF der Norm in die Zwischenablage kopiert werden und dann in einer Text datei Gespeichert
+'Die textdatei wird dann eingelesen und analysiert
+
+
+Sub subNormEinlesen(Optional sSprache As String)
+'List die Norm aus einer TXT Datei
+Dim S1 As String
+Dim S2 As String
+Dim S3 As String
+Dim S4 As String
+Dim s5 As String
+Dim s6 As String
+Dim sNorm As String
+Dim sBez As String
+Dim sText As String
+Dim sDatum As String
+
+Dim sDateiName As String
+Dim Rs1 As DAO.Recordset
+Dim z1 As Long
+Dim Z2 As Long
+Dim z3 As Long
+Dim zNorm As Long
+Dim zBez As Long
+Dim zText As Long
+Dim zDatum As Long
+Dim sSql
+
+Dim b1 As Boolean
+Dim OK As Boolean
+
+sDateiName = CurrentProject.Path & "/Normen.txt"
+
+MsgBox "Im CSafe Verzeichnis muss ein Textfile stehen in das du die Norm über die Zwischenablage kopiert hast. Im PDF der Norm CTRL+A dann CTRL+C dann im Textfile CTRL+V. Das textfile mit dem Namen 'Normen.txt' speichern."
+
+
+
+If MsgBox("Du löschst erst alles und dann meinst Du alles wird besser? Hast Du gesichert willst Du wirklich weiter machen?", vbYesNo) <> vbYes Then
+    MsgBox "Feigling."
+    Exit Sub
+End If
+
+
+'Tabelle Inhalt löschen
+sSql = "DELETE FROM tDA_Normen"
+CurrentDb().Execute sSql
+
+
+
+
+sSql = "SELECT * FROM tDA_Normen WHERE 1=0"
+Set Rs1 = CurrentDb.OpenRecordset(sSql)
+
+Open sDateiName For Input As 1
+
+'Tabelle Inhalt löschen
+sSql = "DELETE FROM t_LiNormen"
+CurrentDb().Execute sSql
+
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_LiNormen")
+'Rs1.Edit
+Do While Not EOF(1)
+    Line Input #1, S1
+    'Debug.Print s1
+    If Left(S1, 3) = "Cen" Then
+        'In der Englischen Norm steht teilweise CE alleine in der Zeile
+        If Len(S1) = 3 Or Len(S1) = 7 Then
+            Line Input #1, S3
+            S1 = S1 & " " & S3
+        End If
+        z1 = z1 + 1
+        z3 = z3 + 3
+        
+        OK = True
+        sNorm = S1
+        sText = ""
+        sBez = ""
+        While OK  'Text wird erkann steht immer direkt hinter der Norm ohne Leerzeile
+            sText = sText & S1 & " "
+            sBez = sBez & S2
+            If Not EOF(1) Then
+                Line Input #1, S2
+            Else
+                S1 = ""
+            End If
+            Z2 = 0
+            'Erkennt das Ende durch die zwei Punkte im Datum
+            If InStr(1, S2, ".") <> 0 Then
+                Z2 = InStr(InStr(1, S2, "."), S2, ".")
+            End If
+            If Z2 <> 0 Then OK = False
+            
+        Wend
+        Debug.Print z1, "N:" & sNorm, "B:" & sBez
+        'If z3 >= 20 Then Stop: z3 = 0:
+        Rs1.AddNew
+            Rs1!fiNorm = z1
+            Rs1!Norm = sNorm
+            Rs1!NormBez = sNorm
+            Rs1!NormText = sBez
+        Rs1.Update
+        
+    End If
+Loop
+Close #1
+Rs1.Close
+Set Rs1 = Nothing
+        
+        
+        
+        
+'
+'        Line Input #1, s1
+'        Line Input #1, s1
+'        If Left(s1, 1) = " " Then s1 = Mid(s1, 2) 'lerrzeichen am Anfang ausschalten
+'        sNorm = Mid(s1, 1, InStr(1, s1, ":") - 1)
+'        sBez = s1
+'        S3 = ""
+'
+'        sText = ""
+'        Line Input #1, s1
+'        While s1 <> ""  'Text wird erkann steht immer direkt hinter der Norm ohne Leerzeile
+'            sText = sText & s1
+'            If Not EOF(1) Then
+'                Line Input #1, s1
+'            Else
+'                s1 = ""
+'            End If
+'        Wend
+'        zText = zText + 1
+'
+'        b1 = True
+'        z3 = 0
+'        While b1
+'            z3 = z3 + 1
+'            Line Input #1, s1
+'            If Val(s1) <> 0 Then 'Datum wird erkann weil Zahl
+'                b1 = False
+'                sDatum = s1
+'                zDatum = zDatum + 1
+'            End If
+'            If z3 > 4 Then  ' Für den Fall das kein Datum gefunden wird
+'                b1 = False
+'                sDatum = ""
+'                S4 = S4 & "|" & sNorm
+'            End If
+'
+'        Wend
+'
+'        rs1.FindFirst ("Norm = '" & sNorm & "'")
+'
+'        's3 = Nz(DLookup("Norm", "t_LiNormen", "Norm = '" & s2 & "'"))
+'        If rs1.NoMatch Then
+'            'Normen die Nicht in CSafe sind aber in der untersuchten Liste
+'            rs1.AddNew
+'                rs1!fiNorm = 1
+'                rs1!Norm = sNorm
+'                rs1!NormBez = sBez
+'                rs1!NormText = sText
+'            rs1.Update
+'            zNorm = zNorm + 1
+'        Else
+'            'Norm ist in der Liste und in CSafe
+'            Z2 = Z2 + 1
+'            S3 = rs1!Norm
+'            rs1.Edit
+'                rs1!fiNorm = 1
+'                rs1!Norm = sNorm
+'                rs1!NormBez = sBez
+'                rs1!NormText = sText
+'            rs1.Update
+'
+'            zNorm = zNorm + 1
+'        End If
+'
+'
+'        Debug.Print "N>" & sNorm & "B>" & sBez & "D>" & sDatum & "T>"; sText
+'
+'
+'    End If 'Norm erkannt
+'Loop
+'Close #1
+'rs1.Close
+'Set rs1 = Nothing
+
+'Debug.Print "Norm  :" & zNorm
+'Debug.Print "Text  :" & zText
+'Debug.Print "Datum :" & zDatum
+'Debug.Print "ohne Datum :" & S4
+
+
+End Sub
+
+
+Public Function funExterneDaten(dbDatei As String, dbIndex As String, FeldBez As String) As String
+'Die Funktion liest aus einer externen Datenbank Eine Variable aus
+'Test ? funExterneDaten ("C:\Users\gut\Daten\CSafe\Da01\CS_Grenzebach - CarryP1200S.accdb","","")
+Dim DB_ As DAO.Database
+Dim Rs1 As DAO.Recordset
+Dim sSql As String
+Dim S1 As String
+Dim S2 As String
+Dim sDir As String
+
+sDir = dbDatei
+
+If Nz(sDir) = "" Then
+    MsgBox LA("Es ist keine Datenbank ausgewählt!")
+    Exit Function
+End If
+
+Set DB_ = OpenDatabase(sDir & ".accdb")
+S1 = "SELECT * FROM tDa_Analyse ORDER BY LNr;"
+Set Rs1 = DB_.OpenRecordset(S1)
+
+sSql = "SELECT * '" & _
+       "FROM tDA_Analyse WHERE (StringFromGUID([fiGu]))=" & dbIndex & ";"
+
+While Rs1.EOF = False
+    'S2 = Nz(Rs1!id) & ";" & Nz(Rs1!LNr) & ";" & Nz(Rs1!Ort)   'Nz(RS1!LiGefahrText)
+     S2 = Nz(Rs1!LNr) & ";" & Nz(Rs1!Ort) & ";" & Nz(Rs1!Beschreibung) & ";" & Nz(Rs1!Loesung)
+   ' Debug.Print S2
+'    Me.LiTexte.AddItem (S2)
+    Rs1.MoveNext
+Wend
+
+Set Rs1 = Nothing
+Set DB_ = Nothing
+
+funExterneDaten = "nix"
+
+End Function
+
+
+
+
+Sub t1()
+Dim S1 As String
+Dim sDateiName As String
+sDateiName = CurrentProject.Path & "/normen/normde.txt"
+Open sDateiName For Input As 1
+While Not EOF(1)
+    Line Input #1, S1
+    Debug.Print S1
+Wend
+Close #1
+End Sub
+
+
+
+
+
+
+
+'Dieses Modul soll Texte aus der MRL einlesen und in eine Tabelle verwandel
+'Es wird muss das PDF der Maschinenrichtlinie in die Zwischenablage kopiert werden und dann in einer Text datei Gespeichert
+'Die textdatei wird dann eingelesen und analysiert
+
+
+Sub subMRLEinlesen()
+'List die Norm aus einer TXT Datei
+Dim S1 As String
+Dim S2 As String
+Dim S3 As String
+Dim S4 As String
+Dim s5 As String
+Dim s6 As String
+Dim sNorm As String
+Dim sBez As String
+Dim sText As String
+Dim sDatum As String
+
+Dim sDateiName As String
+Dim Rs1 As DAO.Recordset
+Dim z1 As Long
+Dim Z2 As Long
+Dim z3 As Long
+Dim zz As Long 'ZeilenZähler
+Dim zNorm As Long
+Dim zBez As Long
+Dim zText As Long
+Dim zDatum As Long
+Dim sSql
+
+Dim b1 As Boolean
+Dim OK As Boolean
+Dim OKa As Boolean
+
+sDateiName = CurrentProject.Path & "/normen/maschinenrichtlinieEN.txt"
+
+'Tabelle Inhalt löschen
+sSql = "DELETE FROM t_LiMRL"
+CurrentDb().Execute sSql
+
+sSql = "SELECT * FROM t_LiMRL WHERE 1=0"
+Set Rs1 = CurrentDb.OpenRecordset(sSql)
+
+Open sDateiName For Input As 1
+Set Rs1 = CurrentDb.OpenRecordset("SELECT * FROM t_LiMrl")
+'Rs1.Edit
+Do While Not EOF(1) And OKa = False 'Sucht den Anfang
+    Line Input #1, S1
+    zz = zz + 1
+    'Erkennt die erste Zeile wenn die Positionen loslaufen
+    If InStr(1, S1, "1. ESSENTIAL HEALTH AND SAFETY REQUIREMENTS") <> 0 Then OKa = True
+Loop
+    
+    'Hier gehts jetzt los mit den Richtlinien
+    sText = S1
+    z1 = 0
+While Not EOF(1)
+    If MrlCheck(S1) <> "" Then  'Ein Zeile erkannt
+        z1 = z1 + 1
+        If z1 = 1 Then  'Das ist die erste zeile
+            sText = S1
+            S2 = S1
+        Else
+            Debug.Print sText  'Ausgabe der Zusammenfassung
+            
+            Rs1.AddNew
+                'rs1!MRID
+                'rs1!MRfiLiMRL
+                    'rs1!id
+                    Rs1!Version = "2016.04"
+                    Rs1!Index = MrlCheck(sText)
+                    'rs1!BezKurz
+                    Rs1!Bez = Mid(sText, Len(MrlCheck(sText)) + 2)
+                    Rs1!Bem = ""
+           Rs1.Update
+            
+            
+            sText = S1
+            S2 = S1
+            z1 = 0
+        End If
+    Else 'Keine Anfangszeile
+        sText = sText & S1
+    End If
+    
+        Line Input #1, S1
+Wend
+        
+    
+
+Close #1
+Rs1.Close
+Set Rs1 = Nothing
+        
+        
+        
+       
+
+End Sub
+
+
+Function MrlCheck(sLine As String) As String
+'Die Funktion findet den Anfang einer Beschreibung in der MRL
+'EIne ZEile in der Mrl fängt immer mit einer Zahl an und endet ohne Leerzeichen mit einem Punkt.
+'die Länge ist nicht größer wie 10
+' test MrlCheck("1.1.11. Das ist eine Zeile")
+Dim L1 As String
+Dim S1 As String
+
+MrlCheck = ""
+If IsNumeric(Left(sLine, 1)) Then
+
+    L1 = InStr(sLine, " ") - 1
+    S1 = Mid(sLine, 1, L1)
+    If Len(S1) < 15 And Right(S1, 1) = "." Then
+            MrlCheck = S1
+    End If
+    
+End If
+
+
+End Function

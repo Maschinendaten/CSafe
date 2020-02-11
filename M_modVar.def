@@ -1,0 +1,157 @@
+Option Compare Database
+Option Explicit
+
+Public Const gloDebug = True
+
+
+Public gloGruppe As Long
+Public gloStandardtext As String
+Public gloGefaehrdung As String
+Public gloEntwickler As Boolean
+Public gloRisikoAW As String
+Public gloPLevelAW As String
+Public gloSilAW As String
+Public gloBenutzerLevel As Long
+Public gloLizensOK As Boolean
+Public gloPrintID As String
+Public gloDebugOn As Boolean
+Public gloRisiko As String
+Public gloRestRisiko As String
+
+
+
+Public Function funCSafeVersion() As String
+
+funCSafeVersion = "1.69"
+'1.69 Englishe Version test mit 64bit
+
+End Function
+
+
+Function funGruppe()
+Dim S1 As String
+Dim S2 As String
+
+'Stop
+
+'Form_f_Analyse02.visible = True
+'DoCmd.Close Form, "f_Analyse02"
+If funFormOpen("f_Analyse02") Then ' And (Form_f_Analyse02.id.Value <> "") Then
+  'Form_f_Analyse02.visible = True
+    S1 = Form_f_Analyse02.LiGefahrTextNr
+    funGruppe = Val(Left(S1, 2))
+    If funGruppe = 0 Then
+        funGruppe = Val(DLookup("FiGruppe", "t_LiGefahr", "NrISO =" & "'" & S1 & "'"))
+    End If
+Else
+    funGruppe = ""
+End If
+
+End Function
+
+
+
+
+Function gloBenutzer() As String
+On Error GoTo Err_
+    gloBenutzer = Form_f_Start.varKeyName
+Exit Function
+
+Err_:
+    gloBenutzer = ""
+End Function
+
+Function funBenutzerLevel() As Long
+    'gloBenutzerLevel = Nz(Forms![frmdatenbanknutzer]![Sicherheitslevel])
+    funBenutzerLevel = gloBenutzerLevel
+End Function
+
+Function funAuswahlProNR()
+On Error GoTo Err_
+    funAuswahlProNR = DLookup("ProID", "tDA_Projekte")  'Forms!f_Analyse01!varProNr
+Exit Function
+Err_:
+    funAuswahlProNR = 10
+End Function
+
+Function funDirWordVorlage()
+    funDirWordVorlage = CurrentProject.Path & "\WordVorlage"
+End Function
+
+
+Function funDirDokuAblage()
+    funDirDokuAblage = CurrentProject.Path & "\WordAblage"
+End Function
+
+Function funAktuellesProjekt() As String
+    funAktuellesProjekt = Nz(Form_f_Start.varAktuellesProjekt)
+End Function
+
+
+Sub subRename()
+
+   Dim ber As Report_Bericht1
+
+    Dim ctl As Control
+    Dim strSQL As String
+    Dim bol1Wert As Boolean
+    Dim st As String
+    Dim ri As String
+    
+   
+    
+    
+    Set ber = Report_Bericht1 'Report_Bericht1 '.Controls   '    Screen.ActiveReport
+
+  For Each ctl In ber.Controls
+        If Not IsNull(ber(ctl.Name)) And ctl.ControlType = 100 Then
+            st = ctl.Name
+            If Left(st, 1) <> "_" Then
+                ctl.Name = "_" & st
+            End If
+        End If
+    Next ctl
+End Sub
+
+Function funPrintID() As String
+'Hier wird die Print ID ausgelesen muss jetzt aus dem
+'funPrintID = gloPrintID
+'If funPrintID = "" Then
+'    funPrintID = Nz(Form_f_Analyse01.varID)
+'End If
+
+'Prüft welches Formular offen ist dann kann auch aus dem normalen Menue gedruckt werden
+    If funFormOpen("F_Analyse02") Then
+        funPrintID = Nz(Form_f_Analyse02.varGuid, 0)  'Nimmt die Nummer aus dem Form für Preview
+        'varGuid oder id
+    End If
+    If funFormOpen("f_Drucken") Then
+        funPrintID = Nz(Form_f_Drucken.LisDruck.Column(2), "")
+    End If
+
+End Function
+
+Function funProjektLoad() As Boolean
+
+If Nz(Form_f_Start.varAktuellesProjekt) <> "" Then
+    funProjektLoad = True
+Else
+    funProjektLoad = False
+End If
+
+End Function
+
+Function funDemo() As Boolean
+On Error GoTo Err_
+
+If Form_f_Start.varKeyName = "Demo" Then
+    funDemo = True
+Else
+    funDemo = False
+End If
+    
+Exit Function
+
+Err_:
+    funDemo = True
+End Function
